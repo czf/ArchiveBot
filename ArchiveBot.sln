@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2003
+VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArchiveBot", "ArchiveBot\ArchiveBot.csproj", "{4D53D399-DDEE-4777-87A9-173BF4366818}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArchiveBot", "ArchiveBot\ArchiveBot.csproj", "{4D53D399-DDEE-4777-87A9-173BF4366818}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -6,49 +6,135 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using RedditSharp;
 using RedditSharp.Things;
-using DefaultWebAgent = RedditSharp.WebAgent;
 using WaybackMachineWrapper;
 using System.Threading.Tasks;
+using System.Net.Http;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
+using System.Security.Authentication;
 
 namespace ArchiveBot
 {
-	public static class Function1
-	{
-		[FunctionName("ArchiveBot")]
-		public static async Task Run([TimerTrigger("0 */10 * * * *")]TimerInfo myTimer, TraceWriter log)
-		{
-			string user = Environment.GetEnvironmentVariable("BotName");
-			string pass = Environment.GetEnvironmentVariable("BotPass");
-			string secret = Environment.GetEnvironmentVariable("BotSecret");
-			string clientId = Environment.GetEnvironmentVariable("botClientId");
-			BotWebAgent agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0000/");
+    public static class Function1
+    {
+        private static bool? _debug;
+        public static bool Debug
+        { 
+            get
+            {
+                if (!_debug.HasValue)
+                {
+                    _debug = Convert.ToBoolean(Environment.GetEnvironmentVariable("Debug"));
+                }
+                return _debug.Value;
+            }
+        }
 
-			Reddit r = new Reddit(agent, true);
+        [FunctionName("ArchiveBot")]
+        public static async Task Run([TimerTrigger("0 */3 * * * *")]TimerInfo myTimer, TraceWriter log)
+        {
+            string storage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
 
-			Listing<Post> posts = r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
-			(
-			//x.Site == "seattleweekly.com" ||
-			//x.Site == "geekwire.com" ||
-			//x.Site == "twitter.com" ||
-			//x.Site == "seattlepi.com" ||
-			x.Site == "seattletimes.com"), Sorting.New, TimeSorting.Day);
-			
-			using (WaybackClient waybackMachine = new WaybackClient())
-			{
-				foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
-				{
-					await ProcessPost(p, waybackMachine, log);
-				}
+            string user = Environment.GetEnvironmentVariable("BotName");
+            string pass = Environment.GetEnvironmentVariable("BotPass");
+            string secret = Environment.GetEnvironmentVariable("BotSecret");
+            string clientId = Environment.GetEnvironmentVariable("botClientId");
+
+            CloudTable oauthTable = CloudStorageAccount
+                .Parse(storage)
+                .CreateCloudTableClient()
+                .GetTableReference("oauth");
+
+            RedditOAuth result = (RedditOAuth)oauthTable
+                .Execute(
+                    TableOperation.Retrieve<RedditOAuth>("reddit", user)
+                ).Result;
+            //https://blog.maartenballiauw.be/post/2012/10/08/what-partitionkey-and-rowkey-are-for-in-windows-azure-table-storage.html
+            //https://www.red-gate.com/simple-talk/cloud/cloud-data/an-introduction-to-windows-azure-table-storage/
+            
+
+
+            Reddit r = null;
+            BotWebAgent agent = null;
+            bool tryLogin = false;
+            int tryLoginAttempts = 2;
+            do
+            {
+                tryLoginAttempts--;
+                tryLogin = false;
+                if (result == null)
+                {
+                    agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0000/");
+                    result = new RedditOAuth() { Token = agent.AccessToken, PartitionKey = "reddit", RowKey = user };
+                    r = new Reddit(agent, true);
+                }
+                else
+                {
+                    try
+                    {
+                        //agent = new BotWebAgent(result.RefreshToken, clientId, secret, "https://www.reddit.com/user/somekindofbot0000/");
+                        r = new Reddit(result.Token);
+                    }
+                    catch (AuthenticationException a)
+                    {
+                        result = null;
+                        tryLogin = true;
+                    }
+                    catch(WebException w)
+                    {
+                        if (w.Status == WebExceptionStatus.ProtocolError
+                            && (w.Response as HttpWebResponse)?.StatusCode == HttpStatusCode.Unauthorized)
+                        {
+                            result = null;
+                            tryLogin = true;
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                   
+                    
+                }
                 
-			}
-			log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
-		}
+            } while (tryLogin && tryLoginAttempts > 0);
+
+            if (r == null)
+                throw new Exception("couldn't get logged in");
+
+
+            oauthTable
+                .Execute(
+                    TableOperation.InsertOrReplace(result));
+
+            CheckMail(r);
+
+            Listing<Post> posts = 
+                r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
+                x.Site == "seattletimes.com"
+            , Sorting.New, TimeSorting.Day);
+            
+            using (WaybackClient waybackMachine = new WaybackClient())
+            {
+                foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
+                {
+                    await ProcessPost(p, waybackMachine, log);
+                }
+                
+            }
+            log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
+        }
+
+        
 
         private static async Task ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log)
         {
             try
             {
-                p.Hide();
+                if (!Debug)
+                {
+                    p.Hide();
+                }
                 Uri archivedUrl = null;
                 log.Info(p.Url.ToString());
                 Uri target = new Uri(p.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped));
@@ -69,13 +155,41 @@ namespace ArchiveBot
 ^^I'm ^^a ^^bot, ^^beep ^^boop";
 
                 log.Info(msg);
-                p.Comment(msg);
+
+
+                if (!Debug)
+                {
+                    p.Comment(msg);
+                }
             }
             catch(Exception e)
             {
                 log.Error("", e);
                 throw;
             }
-		}
-	}
+        }
+
+
+
+        private static void CheckMail(Reddit r)
+        {
+            if (r.User.HasMail)
+            {
+                string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
+                using (HttpClient client = new HttpClient())
+                {
+                    client.BaseAddress = new Uri("https://"+mailBaseAddress);
+                    if (!Debug)
+                    {
+                        client.PostAsync($"api/CheckBotMail/name/{r.User.Name}/",null);
+                    }
+                }
+            }
+        }
+    }
+
+    public class RedditOAuth : TableEntity
+    {
+        public string Token { get; set; }
+    }
 }
