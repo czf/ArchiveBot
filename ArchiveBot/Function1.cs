@@ -12,11 +12,13 @@ using System.Net.Http;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Security.Authentication;
-
+using Microsoft.Azure;
 namespace ArchiveBot
 {
     public static class Function1
     {
+        private static bool _hasRunInit;
+
         private static bool? _debug;
         public static bool Debug
         { 
@@ -30,28 +32,45 @@ namespace ArchiveBot
             }
         }
 
-        [FunctionName("ArchiveBot")]
-        public static async Task Run([TimerTrigger("0 */3 * * * *")]TimerInfo myTimer, TraceWriter log)
-        {
-            string storage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
 
-            string user = Environment.GetEnvironmentVariable("BotName");
-            string pass = Environment.GetEnvironmentVariable("BotPass");
-            string secret = Environment.GetEnvironmentVariable("BotSecret");
-            string clientId = Environment.GetEnvironmentVariable("botClientId");
+        private static string _storage;
+        private static string _user;
+        private static string _pass;
+        private static string _secret;
+        private static string _clientId;
+
+
+
+
+        [FunctionName("ArchiveBot")]
+        public static async Task Run([TimerTrigger("0 */10 * * * *")]TimerInfo myTimer, TraceWriter log)
+        {
+            bool checkTableExists = false;
+            if (!_hasRunInit)
+            {
+                Init();
+                checkTableExists = true;
+            }
+            
 
             CloudTable oauthTable = CloudStorageAccount
-                .Parse(storage)
+                .Parse(_storage)
                 .CreateCloudTableClient()
                 .GetTableReference("oauth");
+            if (checkTableExists)
+            {
+                oauthTable.CreateIfNotExists();
+            }
+
+
 
             RedditOAuth result = (RedditOAuth)oauthTable
                 .Execute(
-                    TableOperation.Retrieve<RedditOAuth>("reddit", user)
+                    TableOperation.Retrieve<RedditOAuth>("reddit", _user)
                 ).Result;
             //https://blog.maartenballiauw.be/post/2012/10/08/what-partitionkey-and-rowkey-are-for-in-windows-azure-table-storage.html
             //https://www.red-gate.com/simple-talk/cloud/cloud-data/an-introduction-to-windows-azure-table-storage/
-            
+
 
 
             Reddit r = null;
@@ -64,8 +83,8 @@ namespace ArchiveBot
                 tryLogin = false;
                 if (result == null)
                 {
-                    agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0000/");
-                    result = new RedditOAuth() { Token = agent.AccessToken, PartitionKey = "reddit", RowKey = user };
+                    agent = new BotWebAgent(_user, _pass, _clientId, _secret, "https://www.reddit.com/user/somekindofbot0000/");
+                    result = new RedditOAuth() { Token = agent.AccessToken, PartitionKey = "reddit", RowKey = _user };
                     r = new Reddit(agent, true);
                 }
                 else
@@ -80,7 +99,7 @@ namespace ArchiveBot
                         result = null;
                         tryLogin = true;
                     }
-                    catch(WebException w)
+                    catch (WebException w)
                     {
                         if (w.Status == WebExceptionStatus.ProtocolError
                             && (w.Response as HttpWebResponse)?.StatusCode == HttpStatusCode.Unauthorized)
@@ -93,10 +112,10 @@ namespace ArchiveBot
                             throw;
                         }
                     }
-                   
-                    
+
+
                 }
-                
+
             } while (tryLogin && tryLoginAttempts > 0);
 
             if (r == null)
@@ -107,25 +126,34 @@ namespace ArchiveBot
                 .Execute(
                     TableOperation.InsertOrReplace(result));
 
-            CheckMail(r);
+            CheckMail(r, log);
 
-            Listing<Post> posts = 
+            Listing<Post> posts =
                 r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
                 x.Site == "seattletimes.com"
             , Sorting.New, TimeSorting.Day);
-            
+
             using (WaybackClient waybackMachine = new WaybackClient())
             {
                 foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
                 {
                     await ProcessPost(p, waybackMachine, log);
                 }
-                
+
             }
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
         }
 
-        
+        private static void Init()
+        {
+            _storage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            _user = Environment.GetEnvironmentVariable("BotName");
+            _pass = Environment.GetEnvironmentVariable("BotPass");
+            _secret = Environment.GetEnvironmentVariable("BotSecret");
+            _clientId = Environment.GetEnvironmentVariable("botClientId");
+            _hasRunInit = true;
+        }
+
 
         private static async Task ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log)
         {
@@ -171,17 +199,21 @@ namespace ArchiveBot
 
 
 
-        private static void CheckMail(Reddit r)
+        private static void CheckMail(Reddit r, TraceWriter log)
         {
             if (r.User.HasMail)
             {
+                log.Info("has mail");
                 string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
                 using (HttpClient client = new HttpClient())
                 {
                     client.BaseAddress = new Uri("https://"+mailBaseAddress);
                     if (!Debug)
                     {
-                        client.PostAsync($"api/CheckBotMail/name/{r.User.Name}/",null);
+                        
+                        log.Info("posting:" + mailBaseAddress+ $"/api/CheckBotMail/name/{r.User.Name}/");
+                         var a = client.PostAsync($"/api/CheckBotMail/name/{r.User.Name}/",null).Result;
+                        
                     }
                 }
             }
