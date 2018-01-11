@@ -51,7 +51,7 @@ namespace ArchiveBot
                 Init();
                 checkTableExists = true;
             }
-            
+
 
             CloudTable oauthTable = CloudStorageAccount
                 .Parse(_storage)
@@ -75,6 +75,7 @@ namespace ArchiveBot
 
             Reddit r = null;
             BotWebAgent agent = null;
+            bool saveToken = false;
             bool tryLogin = false;
             int tryLoginAttempts = 2;
             do
@@ -86,6 +87,7 @@ namespace ArchiveBot
                     agent = new BotWebAgent(_user, _pass, _clientId, _secret, "https://www.reddit.com/user/somekindofbot0000/");
                     result = new RedditOAuth() { Token = agent.AccessToken, PartitionKey = "reddit", RowKey = _user };
                     r = new Reddit(agent, true);
+                    saveToken = true;
                 }
                 else
                 {
@@ -121,10 +123,12 @@ namespace ArchiveBot
             if (r == null)
                 throw new Exception("couldn't get logged in");
 
-
-            oauthTable
-                .Execute(
-                    TableOperation.InsertOrReplace(result));
+            if (saveToken)
+            {
+                oauthTable
+                    .Execute(
+                        TableOperation.InsertOrReplace(result));
+            }
 
             CheckMail(r, log);
 

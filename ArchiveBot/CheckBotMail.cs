@@ -29,6 +29,51 @@ namespace ArchiveBot
             }
         }
 
+        private static string GoodBotReplyMsg
+        {
+            get
+            {
+                //string result = null;
+                //switch(new Random().Next(2))
+                //{
+                //    case 0:
+                //        result = "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)";
+                //        break;
+                //    case 1:
+                //        result = []
+                //        break;
+
+                //}
+                //return result;
+                return "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)"; 
+            }
+        }
+
+        private static string BadBotReplyMsg
+        {
+            get
+            {
+                string result = null;
+                {
+                    case 0:
+                        result = "[^^*sad* ^^beep](https://www.youtube.com/watch?v=-_Ykc91L5kY)";//random robot screech
+                        break;
+                    case 1:
+                        result = "[^^*sad* ^^boop](https://www.youtube.com/watch?v=SE_iOAQwgL0)";//Gasp
+                        break;
+                    case 2:
+                        result = "[*oh yeah?*](https://www.youtube.com/watch?v=yvllQl5t4Ww)";//Your mother
+                        break;
+                    case 3:
+                        result = "[*^^heh ^^heh...*](https://www.youtube.com/watch?v=8qJac4PR1aI)";//Sad bender laugh
+                        break;
+                        //https://www.youtube.com/watch?v=lIInXiCZUYE //what?
+                        //https://www.youtube.com/watch?v=YqZKsmp0z6A //what?[2] loop this?
+                }
+                return result;
+            }
+        }
+
         [FunctionName("CheckBotMail")]
         public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous,  "post", Route = "CheckBotMail/name/{name}")]HttpRequestMessage req, string name, TraceWriter log)
         {
@@ -104,39 +149,64 @@ namespace ArchiveBot
             foreach (Thing t in r.User.UnreadMessages.Where(x=> x is Comment))
             {
                 Comment c = t as Comment;
-                string replyMsg = "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)";
-                if (!Debug)
+                string cleanBody = c.Body.ToLower().Trim().Replace(".", "");
+                string replyMsg = null;
+                bool isUnknownMessage = false;
+                if(string.Equals(cleanBody, "good bot"))
                 {
-                    c.SetAsRead();
-                    if (string.Equals(c.Body.ToLower().Trim(), "good bot"))
-                    {
-                        c.Reply(replyMsg);
-                    }
-                    else
-                    {
-                        log.Info("unknown reply: " + c.Body);
-                    }
-
+                    replyMsg = GoodBotReplyMsg;
+                }
+                else if (string.Equals(cleanBody, "bad bot"))
+                {
+                    replyMsg = BadBotReplyMsg;
                 }
                 else
                 {
-                    if (string.Equals(c.Body.ToLower().Trim(), "good bot"))
-                    {
-                        log.Info(replyMsg);
-                    }
-                    else
-                    {
-                        log.Info("unknown reply: " + c.Body);
-                    }
+                    isUnknownMessage = true;
+                    replyMsg = $"unknown reply: {c.Body}";
+
                 }
+
+
+
+                ReplyAction(replyMsg, c, log, isUnknownMessage);
+
+                //else
+                //{
+                //    if (string.Equals(cleanBody, "good bot"))
+                //    {
+                //        log.Info(replyMsg);
+                //    }
+                //    else
+                //    {
+                //        log.Info("unknown reply: " + c.Body);
+                //    }
+                //}
             }
-
-
 
             log.Info("C# HTTP trigger function processed a request.");
 
             // Fetching the name from the path parameter in the request URL
             return req.CreateResponse(HttpStatusCode.OK);
+        }
+
+        private static void ReplyAction(string replyMsg, Comment comment, TraceWriter log, bool isUnknownMessage)
+        {
+            if (!Debug)
+            {
+                comment.SetAsRead();
+            }
+
+            if(!isUnknownMessage && !Debug)
+            {
+                comment.Reply(replyMsg);
+            }
+            else
+            {
+                log.Info(replyMsg);
+            }
+
+            
         }
     }
 }
