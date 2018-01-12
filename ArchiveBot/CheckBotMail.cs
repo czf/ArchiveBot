@@ -33,19 +33,19 @@ namespace ArchiveBot
         {
             get
             {
-                //string result = null;
-                //switch(new Random().Next(2))
-                //{
-                //    case 0:
-                //        result = "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)";
-                //        break;
-                //    case 1:
-                //        result = []
-                //        break;
+                string result = null;
+                switch (new Random().Next(2))
+                {
+                    case 0:
+                        result = "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)";
+                        break;
+                    case 1:
+                        result = "[Thanks](https://www.youtube.com/watch?v=hRb6ordY4J4)"; //thumbs up
+                        break;
 
-                //}
-                //return result;
-                return "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)"; 
+                }
+                return result;
+
             }
         }
 
@@ -54,6 +54,7 @@ namespace ArchiveBot
             get
             {
                 string result = null;
+                switch (new Random().Next(4))
                 {
                     case 0:
                         result = "[^^*sad* ^^beep](https://www.youtube.com/watch?v=-_Ykc91L5kY)";//random robot screech

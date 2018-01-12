@@ -71,7 +71,11 @@ namespace ArchiveBot
             //https://blog.maartenballiauw.be/post/2012/10/08/what-partitionkey-and-rowkey-are-for-in-windows-azure-table-storage.html
             //https://www.red-gate.com/simple-talk/cloud/cloud-data/an-introduction-to-windows-azure-table-storage/
 
-
+            if(result.GetNewToken < DateTimeOffset.Now)
+            {
+                result = null;
+                log.Info("need a new token");
+            }
 
             Reddit r = null;
             BotWebAgent agent = null;
@@ -85,7 +89,7 @@ namespace ArchiveBot
                 if (result == null)
                 {
                     agent = new BotWebAgent(_user, _pass, _clientId, _secret, "https://www.reddit.com/user/somekindofbot0000/");
-                    result = new RedditOAuth() { Token = agent.AccessToken, PartitionKey = "reddit", RowKey = _user };
+                    result = new RedditOAuth() { Token = agent.AccessToken, GetNewToken = DateTimeOffset.Now.AddMinutes(57), PartitionKey = "reddit", RowKey = _user };
                     r = new Reddit(agent, true);
                     saveToken = true;
                 }
@@ -128,6 +132,7 @@ namespace ArchiveBot
                 oauthTable
                     .Execute(
                         TableOperation.InsertOrReplace(result));
+                log.Info("saving token");
             }
 
             CheckMail(r, log);
@@ -171,12 +176,14 @@ namespace ArchiveBot
                 log.Info(p.Url.ToString());
                 Uri target = new Uri(p.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped));
                 AvailableResponse response = await waybackClient.AvailableAsync(target);
-                if (response?.archived_snapshots?.closest?.url != null)
+                if (response?.archived_snapshots?.closest?.available == true)
                 {
                     archivedUrl = response.archived_snapshots.closest.url;
+                    log.Info("using available snapshot.");
                 }
                 else
                 {
+                    log.Info("creating snapshot.");
                     archivedUrl = await waybackClient.SaveAsync(target);
                 }
 
@@ -227,5 +234,6 @@ namespace ArchiveBot
     public class RedditOAuth : TableEntity
     {
         public string Token { get; set; }
+        public DateTimeOffset GetNewToken { get; set; }
     }
 }
