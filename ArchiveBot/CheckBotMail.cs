@@ -107,7 +107,7 @@ namespace ArchiveBot
                 if (result == null)
                 {
                     agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0000/");
-                    result = new RedditOAuth() { Token = agent.AccessToken, PartitionKey = "reddit", RowKey = user };
+                    result = new RedditOAuth() { Token = agent.AccessToken, GetNewToken = DateTimeOffset.Now.AddMinutes(57), PartitionKey = "reddit", RowKey = user };
                     r = new Reddit(agent, true);
                 }
                 else
@@ -142,9 +142,10 @@ namespace ArchiveBot
             if (r == null)
                 throw new Exception("couldn't get logged in");
 
-            oauthTable
-                .Execute(
-                    TableOperation.InsertOrReplace(result));
+            //This save might be affecting the archive function
+            //oauthTable
+            //    .Execute(
+            //        TableOperation.InsertOrReplace(result));
 
 
             foreach (Thing t in r.User.UnreadMessages.Where(x=> x is Comment))
@@ -201,6 +202,7 @@ namespace ArchiveBot
             if(!isUnknownMessage && !Debug)
             {
                 comment.Reply(replyMsg);
+                log.Info($"Replying with: {replyMsg}");
             }
             else
             {
