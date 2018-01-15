@@ -52,11 +52,12 @@ namespace ArchiveBot
                 checkTableExists = true;
             }
 
-
+            
             CloudTable oauthTable = CloudStorageAccount
                 .Parse(_storage)
                 .CreateCloudTableClient()
                 .GetTableReference("oauth");
+            
             if (checkTableExists)
             {
                 oauthTable.CreateIfNotExists();
@@ -71,7 +72,7 @@ namespace ArchiveBot
             //https://blog.maartenballiauw.be/post/2012/10/08/what-partitionkey-and-rowkey-are-for-in-windows-azure-table-storage.html
             //https://www.red-gate.com/simple-talk/cloud/cloud-data/an-introduction-to-windows-azure-table-storage/
 
-            if(result.GetNewToken < DateTimeOffset.Now)
+            if(result?.GetNewToken < DateTimeOffset.Now)
             {
                 result = null;
                 log.Info("need a new token");
@@ -97,7 +98,6 @@ namespace ArchiveBot
                 {
                     try
                     {
-                        //agent = new BotWebAgent(result.RefreshToken, clientId, secret, "https://www.reddit.com/user/somekindofbot0000/");
                         r = new Reddit(result.Token);
                     }
                     catch (AuthenticationException a)
@@ -135,7 +135,7 @@ namespace ArchiveBot
                 log.Info("saving token");
             }
 
-            CheckMail(r, log);
+            Task<HttpResponseMessage> checkMailTask = CheckMail(r, log);
 
             Listing<Post> posts =
                 r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
@@ -150,6 +150,12 @@ namespace ArchiveBot
                 }
 
             }
+            if (!checkMailTask.IsCompleted)
+            {
+                log.Info("waiting for checkmail");
+                await checkMailTask;
+            }
+
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
         }
 
@@ -176,15 +182,39 @@ namespace ArchiveBot
                 log.Info(p.Url.ToString());
                 Uri target = new Uri(p.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped));
                 AvailableResponse response = await waybackClient.AvailableAsync(target);
-                if (response?.archived_snapshots?.closest?.available == true)
+                int attempts = 2;
+                bool success = false;
+                do
                 {
-                    archivedUrl = response.archived_snapshots.closest.url;
-                    log.Info("using available snapshot.");
-                }
-                else
+                    attempts--;
+                    if (response?.archived_snapshots?.closest?.available == true)
+                    {
+                        archivedUrl = response.archived_snapshots.closest.url;
+                        log.Info("using available snapshot.");
+                        success = true;
+                    }
+                    else
+                    {
+                        log.Info("creating snapshot.");
+                        archivedUrl = await waybackClient.SaveAsync(target);
+                        using (HttpClient client = new HttpClient())
+                        {
+                            HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl);
+                            if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                            {
+                                log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                            }
+                            else
+                            {
+                                log.Info("check returned success.");
+                                success = true;
+                            }
+                        }
+                    }
+                } while (attempts > 0 && !success);
+                if (!success)
                 {
-                    log.Info("creating snapshot.");
-                    archivedUrl = await waybackClient.SaveAsync(target);
+                    throw new ApplicationException("Wayback machine wouldn't cache content.");
                 }
 
                 string msg =
@@ -210,8 +240,9 @@ namespace ArchiveBot
 
 
 
-        private static void CheckMail(Reddit r, TraceWriter log)
+        private static Task<HttpResponseMessage> CheckMail(Reddit r, TraceWriter log)
         {
+            Task<HttpResponseMessage> result = Task.FromResult<HttpResponseMessage>(null);
             if (r.User.HasMail)
             {
                 log.Info("has mail");
@@ -223,11 +254,12 @@ namespace ArchiveBot
                     {
                         
                         log.Info("posting:" + mailBaseAddress+ $"/api/CheckBotMail/name/{r.User.Name}/");
-                         var a = client.PostAsync($"/api/CheckBotMail/name/{r.User.Name}/",null).Result;
+                        result = client.PostAsync($"/api/CheckBotMail/name/{r.User.Name}/", null);
                         
                     }
                 }
             }
+            return result;
         }
     }
 
