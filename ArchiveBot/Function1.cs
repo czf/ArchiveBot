@@ -134,26 +134,35 @@ namespace ArchiveBot
                         TableOperation.InsertOrReplace(result));
                 log.Info("saving token");
             }
-
-            Task<HttpResponseMessage> checkMailTask = CheckMail(r, log);
-
-            Listing<Post> posts =
-                r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
-                x.Site == "seattletimes.com"
-            , Sorting.New, TimeSorting.Day);
-
-            using (WaybackClient waybackMachine = new WaybackClient())
+            
+            using (HttpClient client = new HttpClient())
             {
-                foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
+                string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
+                client.BaseAddress = new Uri("https://" + mailBaseAddress);
+                Task<HttpResponseMessage> checkMailTask = CheckMail(r, log, client);
+
+                Listing<Post> posts =
+                    r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
+                    x.Site == "seattletimes.com"
+                , Sorting.New, TimeSorting.Day);
+
+                using (WaybackClient waybackMachine = new WaybackClient())
                 {
-                    await ProcessPost(p, waybackMachine, log);
-                }
+                    foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
+                    {
+                        await ProcessPost(p, waybackMachine, log);
+                    }
 
-            }
-            if (!checkMailTask.IsCompleted)
-            {
-                log.Info("waiting for checkmail");
-                await checkMailTask;
+                }
+                if (checkMailTask.Status < TaskStatus.RanToCompletion)
+                {
+                    log.Info("waiting for checkmail");
+                    await checkMailTask;
+                }
+                else
+                {
+                    log.Info(checkMailTask.Status.ToString());
+                }
             }
 
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
@@ -240,24 +249,18 @@ namespace ArchiveBot
 
 
 
-        private static Task<HttpResponseMessage> CheckMail(Reddit r, TraceWriter log)
+        private static Task<HttpResponseMessage> CheckMail(Reddit r, TraceWriter log, HttpClient client)
         {
             Task<HttpResponseMessage> result = Task.FromResult<HttpResponseMessage>(null);
             if (r.User.HasMail)
             {
                 log.Info("has mail");
-                string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
-                using (HttpClient client = new HttpClient())
-                {
-                    client.BaseAddress = new Uri("https://"+mailBaseAddress);
+                
                     if (!Debug)
                     {
-                        
-                        log.Info("posting:" + mailBaseAddress+ $"/api/CheckBotMail/name/{r.User.Name}/");
                         result = client.PostAsync($"/api/CheckBotMail/name/{r.User.Name}/", null);
-                        
+                        log.Info("posting:" + client.BaseAddress + $"/api/CheckBotMail/name/{r.User.Name}/ \n {result.Status}");
                     }
-                }
             }
             return result;
         }
