@@ -43,6 +43,9 @@ namespace ArchiveBot
                         result = "[Thanks](https://www.youtube.com/watch?v=hRb6ordY4J4)"; //thumbs up
                         break;
 
+                        //https://www.youtube.com/watch?v=r3J5XfnjvwY  aww yeah
+                        //https://gfycat.com/ifr/WeepyPresentCub blushing robot
+                        //https://gfycat.com/ifr/DimwittedFavorableKillerwhale robot hug
                 }
                 return result;
 
@@ -70,6 +73,8 @@ namespace ArchiveBot
                         break;
                         //https://www.youtube.com/watch?v=lIInXiCZUYE //what?
                         //https://www.youtube.com/watch?v=YqZKsmp0z6A //what?[2] loop this?
+
+                        //https://gfycat.com/ifr/UnpleasantDetailedHoiho gfycat of robot walking fliping the bird
                 }
                 return result;
             }
