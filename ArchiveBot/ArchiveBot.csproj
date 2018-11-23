@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net461</TargetFramework>
+    <TargetFramework>net472</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="czf.apiwrappers.waybackmachine" Version="1.0.0" />
-    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.7" />
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Czf.Api.NewsBankWrapper" Version="1.0.0" />
+    <PackageReference Include="czf.apiwrappers.waybackmachine" Version="2.0.0" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.24" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />

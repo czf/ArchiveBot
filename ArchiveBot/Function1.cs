@@ -1,3 +1,9 @@
+/*
+New York Times Online => Proquest
+Seattle Times Online => NewsBank
+WallStreetJournal Online => Proquest
+*/
+
 using System;
 using System.Net;
 using System.Collections.Generic;
@@ -38,14 +44,14 @@ namespace ArchiveBot
         private static string _pass;
         private static string _secret;
         private static string _clientId;
-
-
+        private static HttpClient client = new HttpClient();
+        private static bool checkTableExists = false;
 
 
         [FunctionName("ArchiveBot")]
         public static async Task Run([TimerTrigger("0 */10 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
-            bool checkTableExists = false;
+            
             if (!_hasRunInit)
             {
                 Init();
@@ -126,7 +132,7 @@ namespace ArchiveBot
 
             if (r == null)
                 throw new Exception("couldn't get logged in");
-
+            
             if (saveToken)
             {
                 oauthTable
@@ -190,24 +196,32 @@ namespace ArchiveBot
                 Uri archivedUrl = null;
                 log.Info(p.Url.ToString());
                 Uri target = new Uri(p.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped));
-                AvailableResponse response = await waybackClient.AvailableAsync(target);
-                int attempts = 2;
-                bool success = false;
-                do
+                Task<AvailableResponse> response = waybackClient.AvailableAsync(target);
+                response.Start();
+                Task<HttpResponseMessage> targetGetResponse = client.GetAsync(target);
+                targetGetResponse.Start();
+                Task[] tasks = new Task[2];
+
+                Task<Comment> commentTask = response.ContinueWith(async x =>
                 {
-                    attempts--;
-                    if (response?.archived_snapshots?.closest?.available == true)
+                    AvailableResponse availableResponse = x.Result;
+
+                    int attempts = 2;
+                    bool success = false;
+                    do
                     {
-                        archivedUrl = response.archived_snapshots.closest.url;
-                        log.Info("using available snapshot.");
-                        success = true;
-                    }
-                    else
-                    {
-                        log.Info("creating snapshot.");
-                        archivedUrl = await waybackClient.SaveAsync(target);
-                        using (HttpClient client = new HttpClient())
+                        attempts--;
+                        if (availableResponse?.archived_snapshots?.closest?.available == true)
                         {
+                            archivedUrl = availableResponse.archived_snapshots.closest.url;
+                            log.Info("using available snapshot.");
+                            success = true;
+                        }
+                        else
+                        {
+                            log.Info("creating snapshot.");
+                            archivedUrl = await waybackClient.SaveAsync(target);
+                            
                             HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl);
                             if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
                             {
@@ -218,27 +232,54 @@ namespace ArchiveBot
                                 log.Info("check returned success.");
                                 success = true;
                             }
+                            
                         }
+                    } while (attempts > 0 && !success);
+                    if (!success)
+                    {
+                        throw new ApplicationException("Wayback machine wouldn't cache content.");
                     }
-                } while (attempts > 0 && !success);
-                if (!success)
-                {
-                    throw new ApplicationException("Wayback machine wouldn't cache content.");
-                }
 
-                string msg =
-    $@"[Archive.org version.]({archivedUrl.ToString()})
+                    string msg =
+        $@"[Archive.org version.]({archivedUrl.ToString()})
 
 ----
 ^^I'm ^^a ^^bot, ^^beep ^^boop";
 
-                log.Info(msg);
+                    log.Info(msg);
 
 
-                if (!Debug)
+                    Comment comment = null;
+                    if (!Debug)
+                    {
+                        comment = p.Comment(msg);
+                    }
+                    return comment;
+                },TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
+
+                await Task.WhenAll(targetGetResponse, commentTask).ContinueWith(
+                    x=>
+                
                 {
-                    p.Comment(msg);
-                }
+                    Comment comment = commentTask.Result;
+                    HttpResponseMessage articleResponse = targetGetResponse.Result;
+
+                    CloudTable articleTable = CloudStorageAccount
+                    .Parse(_storage)
+                    .CreateCloudTableClient()
+                    .GetTableReference("article");
+
+                    if (checkTableExists)
+                    {
+                        articleTable.CreateIfNotExists();
+                    }
+                    articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(articleResponse, comment)));
+
+                }, TaskContinuationOptions.OnlyOnRanToCompletion);
+                
+                //TODO Dispose AvailableResponse;
+                
+
             }
             catch(Exception e)
             {
@@ -246,7 +287,6 @@ namespace ArchiveBot
                 throw;
             }
         }
-
 
 
         private static Task<HttpResponseMessage> CheckMail(Reddit r, TraceWriter log, HttpClient client)
@@ -263,6 +303,18 @@ namespace ArchiveBot
                     }
             }
             return result;
+        }
+    }
+    public class ArticlePost : TableEntity
+    {
+        public string ArticleAuthor { get; set; }
+        public string ArticleHeadline { get; set; }
+        public DateTime ArticleDate { get; set; }
+        public Uri CommentUri { get; set; }
+
+        public ArticlePost(HttpResponseMessage articleResponse, Comment comment)
+        {
+
         }
     }
 
