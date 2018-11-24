@@ -19,6 +19,8 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using System.Security.Authentication;
 using Microsoft.Azure;
+using ArchiveBot.Objects;
+
 namespace ArchiveBot
 {
     public static class Function1
@@ -49,7 +51,7 @@ namespace ArchiveBot
 
 
         [FunctionName("ArchiveBot")]
-        public static async Task Run([TimerTrigger("0 */10 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("00 */1 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             
             if (!_hasRunInit)
@@ -154,7 +156,7 @@ namespace ArchiveBot
 
                 using (WaybackClient waybackMachine = new WaybackClient())
                 {
-                    foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
+                    foreach (Post p in posts.Take(1))//TakeWhile(x => !x.IsHidden))
                     {
                         await ProcessPost(p, waybackMachine, log);
                     }
@@ -196,90 +198,92 @@ namespace ArchiveBot
                 Uri archivedUrl = null;
                 log.Info(p.Url.ToString());
                 Uri target = new Uri(p.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped));
-                Task<AvailableResponse> response = waybackClient.AvailableAsync(target);
-                response.Start();
-                Task<HttpResponseMessage> targetGetResponse = client.GetAsync(target);
-                targetGetResponse.Start();
-                Task[] tasks = new Task[2];
-
-                Task<Comment> commentTask = response.ContinueWith(async x =>
+                using (Task<AvailableResponse> response = waybackClient.AvailableAsync(target))
+                using (Task<HttpResponseMessage> targetGetResponse = client.GetAsync(target))
                 {
-                    AvailableResponse availableResponse = x.Result;
 
-                    int attempts = 2;
-                    bool success = false;
-                    do
+
+                    Task<Comment> commentTask = response.ContinueWith(async x =>
                     {
-                        attempts--;
-                        if (availableResponse?.archived_snapshots?.closest?.available == true)
+                        AvailableResponse availableResponse = x.Result;
+
+                        int attempts = 2;
+                        bool success = false;
+                        do
                         {
-                            archivedUrl = availableResponse.archived_snapshots.closest.url;
-                            log.Info("using available snapshot.");
-                            success = true;
-                        }
-                        else
-                        {
-                            log.Info("creating snapshot.");
-                            archivedUrl = await waybackClient.SaveAsync(target);
-                            
-                            HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl);
-                            if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                            attempts--;
+                            if (availableResponse?.archived_snapshots?.closest?.available == true)
                             {
-                                log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                                archivedUrl = availableResponse.archived_snapshots.closest.url;
+                                log.Info("using available snapshot.");
+                                success = true;
                             }
                             else
                             {
-                                log.Info("check returned success.");
-                                success = true;
-                            }
-                            
-                        }
-                    } while (attempts > 0 && !success);
-                    if (!success)
-                    {
-                        throw new ApplicationException("Wayback machine wouldn't cache content.");
-                    }
+                                log.Info("creating snapshot.");
+                                archivedUrl = await waybackClient.SaveAsync(target);
 
-                    string msg =
-        $@"[Archive.org version.]({archivedUrl.ToString()})
+                                HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl);
+                                if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                                {
+                                    log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                                }
+                                else
+                                {
+                                    log.Info("check returned success.");
+                                    success = true;
+                                }
+
+                            }
+                        } while (attempts > 0 && !success);
+                        if (!success)
+                        {
+                            throw new ApplicationException("Wayback machine wouldn't cache content.");
+                        }
+
+                        string msg =
+            $@"[Archive.org version.]({archivedUrl.ToString()})
 
 ----
 ^^I'm ^^a ^^bot, ^^beep ^^boop";
 
-                    log.Info(msg);
+                        log.Info(msg);
 
 
-                    Comment comment = null;
-                    if (!Debug)
+                        Comment comment = null;
+                        if (!Debug)
+                        {
+                            comment = p.Comment(msg);
+                        }
+                        return comment;
+                    }, TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
+
+                    await Task.WhenAll(targetGetResponse, commentTask).ContinueWith(
+                        x =>
+
                     {
-                        comment = p.Comment(msg);
-                    }
-                    return comment;
-                },TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
+                        Comment comment = commentTask.Result;
+                        using (HttpResponseMessage articleResponse = targetGetResponse.Result)
+                        {
+                            SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
 
-                await Task.WhenAll(targetGetResponse, commentTask).ContinueWith(
-                    x=>
-                
-                {
-                    Comment comment = commentTask.Result;
-                    HttpResponseMessage articleResponse = targetGetResponse.Result;
+                            CloudTable articleTable = CloudStorageAccount
+                            .Parse(_storage)
+                            .CreateCloudTableClient()
+                            .GetTableReference("article");
 
-                    CloudTable articleTable = CloudStorageAccount
-                    .Parse(_storage)
-                    .CreateCloudTableClient()
-                    .GetTableReference("article");
+                            if (checkTableExists)
+                            {
+                                articleTable.CreateIfNotExists();
+                            }
+                            articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                        }
 
-                    if (checkTableExists)
-                    {
-                        articleTable.CreateIfNotExists();
-                    }
-                    articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(articleResponse, comment)));
+                    }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
-                }, TaskContinuationOptions.OnlyOnRanToCompletion);
-                
-                //TODO Dispose AvailableResponse;
-                
+                    //TODO Dispose AvailableResponse;
 
+                }
             }
             catch(Exception e)
             {
@@ -310,11 +314,17 @@ namespace ArchiveBot
         public string ArticleAuthor { get; set; }
         public string ArticleHeadline { get; set; }
         public DateTime ArticleDate { get; set; }
-        public Uri CommentUri { get; set; }
+        public string CommentUri { get; set; }
 
-        public ArticlePost(HttpResponseMessage articleResponse, Comment comment)
+        public ArticlePost(SeattleTimesArticle seattleTimesArticle, Comment comment)
         {
-
+            ArticleAuthor = seattleTimesArticle.ByLineAuthors.First();
+            ArticleHeadline = seattleTimesArticle.Headline;
+            ArticleDate = seattleTimesArticle.PublishDate.Date;
+            CommentUri = comment.Permalink;
+            PartitionKey = comment.Subreddit;
+            RowKey = comment.Id;
+            
         }
     }
 

@@ -5,6 +5,7 @@
   <ItemGroup>
     <PackageReference Include="Czf.Api.NewsBankWrapper" Version="1.0.0" />
     <PackageReference Include="czf.apiwrappers.waybackmachine" Version="2.0.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.8.10" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.24" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
@@ -13,6 +14,7 @@
     <Reference Include="RedditSharp">
       <HintPath>RedditSharp.dll</HintPath>
     </Reference>
+    <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
