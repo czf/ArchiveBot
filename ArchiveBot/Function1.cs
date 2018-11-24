@@ -156,7 +156,7 @@ namespace ArchiveBot
 
                 using (WaybackClient waybackMachine = new WaybackClient())
                 {
-                    foreach (Post p in posts.Take(1))//TakeWhile(x => !x.IsHidden))
+                    foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
                     {
                         await ProcessPost(p, waybackMachine, log);
                     }
