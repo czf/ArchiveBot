@@ -305,3 +305,4 @@ ArchiveBot/local.settings.json
 /ArchiveBot/Properties
 *Web Deploy.pubxml
 *Web Deploy.pubxml.user
+ArchiveBot/Objects/NewsBankDependancies/ignore/CredProvider.cs

@@ -46,12 +46,12 @@ namespace ArchiveBot
         private static string _pass;
         private static string _secret;
         private static string _clientId;
-        private static HttpClient client = new HttpClient();
+        private static HttpClient client;
         private static bool checkTableExists = false;
 
-
+        
         [FunctionName("ArchiveBot")]
-        public static async Task Run([TimerTrigger("00 */1 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("00 */10 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             
             if (!_hasRunInit)
@@ -71,7 +71,15 @@ namespace ArchiveBot
                 oauthTable.CreateIfNotExists();
             }
 
+            CloudTable articleTable = CloudStorageAccount
+                            .Parse(_storage)
+                            .CreateCloudTableClient()
+                            .GetTableReference("article");
 
+            if (checkTableExists)
+            {
+                articleTable.CreateIfNotExists();
+            }
 
             RedditOAuth result = (RedditOAuth)oauthTable
                 .Execute(
@@ -143,8 +151,7 @@ namespace ArchiveBot
                 log.Info("saving token");
             }
             
-            using (HttpClient client = new HttpClient())
-            {
+            
                 string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
                 client.BaseAddress = new Uri("https://" + mailBaseAddress);
                 Task<HttpResponseMessage> checkMailTask = CheckMail(r, log, client);
@@ -158,7 +165,7 @@ namespace ArchiveBot
                 {
                     foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
                     {
-                        await ProcessPost(p, waybackMachine, log);
+                        await ProcessPost(p, waybackMachine, log, articleTable);
                     }
 
                 }
@@ -171,7 +178,7 @@ namespace ArchiveBot
                 {
                     log.Info(checkMailTask.Status.ToString());
                 }
-            }
+            
 
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
         }
@@ -184,10 +191,11 @@ namespace ArchiveBot
             _secret = Environment.GetEnvironmentVariable("BotSecret");
             _clientId = Environment.GetEnvironmentVariable("botClientId");
             _hasRunInit = true;
+            client = new HttpClient();
         }
 
 
-        private static async Task ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log)
+        private static async Task ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log, CloudTable articleTable)
         {
             try
             {
@@ -202,7 +210,7 @@ namespace ArchiveBot
                 using (Task<HttpResponseMessage> targetGetResponse = client.GetAsync(target))
                 {
 
-
+                    Comment commentResult = null;
                     Task<Comment> commentTask = response.ContinueWith(async x =>
                     {
                         AvailableResponse availableResponse = x.Result;
@@ -223,15 +231,17 @@ namespace ArchiveBot
                                 log.Info("creating snapshot.");
                                 archivedUrl = await waybackClient.SaveAsync(target);
 
-                                HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl);
-                                if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                                using (HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl))
                                 {
-                                    log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
-                                }
-                                else
-                                {
-                                    log.Info("check returned success.");
-                                    success = true;
+                                    if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                                    {
+                                        log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                                    }
+                                    else
+                                    {
+                                        log.Info("check returned success.");
+                                        success = true;
+                                    }
                                 }
 
                             }
@@ -243,6 +253,8 @@ namespace ArchiveBot
 
                         string msg =
             $@"[Archive.org version.]({archivedUrl.ToString()})
+
+:0:
 
 ----
 ^^I'm ^^a ^^bot, ^^beep ^^boop";
@@ -266,17 +278,18 @@ namespace ArchiveBot
                         using (HttpResponseMessage articleResponse = targetGetResponse.Result)
                         {
                             SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
-
-                            CloudTable articleTable = CloudStorageAccount
-                            .Parse(_storage)
-                            .CreateCloudTableClient()
-                            .GetTableReference("article");
-
-                            if (checkTableExists)
+                            if (seattleTimesArticle.PublishDate.Date < DateTime.Now.Date)
                             {
-                                articleTable.CreateIfNotExists();
+                                log.Info("article post is at least a day old, will make newsbank edit.");
+                                EditForNewsbank.GetCommentLine(new ArticlePost( seattleTimesArticle, comment),log).ContinueWith( y=>
+                                    EditForNewsbank.EditComment(y.Result,comment));
+                                log.Info("article post has been edited.");
                             }
-                            articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                            else
+                            {
+                                log.Info("will store article post");
+                                articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                            }
                         }
 
                     }, TaskContinuationOptions.OnlyOnRanToCompletion);
@@ -316,6 +329,7 @@ namespace ArchiveBot
         public DateTime ArticleDate { get; set; }
         public string CommentUri { get; set; }
 
+        public ArticlePost() { }
         public ArticlePost(SeattleTimesArticle seattleTimesArticle, Comment comment)
         {
             ArticleAuthor = seattleTimesArticle.ByLineAuthors.First();
