@@ -20,6 +20,8 @@ using Microsoft.WindowsAzure.Storage.Table;
 using System.Security.Authentication;
 using Microsoft.Azure;
 using ArchiveBot.Objects;
+using Czf.Api.NewsBankWrapper;
+using ArchiveBot.Objects.NewsBankDependancies;
 
 namespace ArchiveBot
 {
@@ -57,7 +59,7 @@ namespace ArchiveBot
             if (!_hasRunInit)
             {
                 Init();
-                checkTableExists = true;
+                
             }
 
             
@@ -79,6 +81,7 @@ namespace ArchiveBot
             if (checkTableExists)
             {
                 articleTable.CreateIfNotExists();
+                checkTableExists = true;
             }
 
             RedditOAuth result = (RedditOAuth)oauthTable
@@ -150,34 +153,40 @@ namespace ArchiveBot
                         TableOperation.InsertOrReplace(result));
                 log.Info("saving token");
             }
-            
-            
-                string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
-                client.BaseAddress = new Uri("https://" + mailBaseAddress);
-                Task<HttpResponseMessage> checkMailTask = CheckMail(r, log, client);
 
-                Listing<Post> posts =
-                    r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
-                    x.Site == "seattletimes.com"
-                , Sorting.New, TimeSorting.Day);
+            NewsBankClient newsBankClient = new NewsBankClient(
+                 new EnvironmentVariableEZProxySignInUriProvider(),
+                EditForNewsbank._credProvider,
+                new EnvironmentVariableProductBaseUriProvider(),
+                new BasicCanLog(log));
 
-                using (WaybackClient waybackMachine = new WaybackClient())
-                {
-                    foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
-                    {
-                        await ProcessPost(p, waybackMachine, log, articleTable);
-                    }
 
-                }
-                if (checkMailTask.Status < TaskStatus.RanToCompletion)
+
+
+            Task<HttpResponseMessage> checkMailTask = CheckMail(r, log, client);
+
+            Listing<Post> posts =
+                r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
+                x.Site == "seattletimes.com"
+            , Sorting.New, TimeSorting.Day);
+
+            using (WaybackClient waybackMachine = new WaybackClient())
+            {
+                foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
                 {
-                    log.Info("waiting for checkmail");
-                    await checkMailTask;
+                    await ProcessPost(p, waybackMachine, log, articleTable, newsBankClient);
                 }
-                else
-                {
-                    log.Info(checkMailTask.Status.ToString());
-                }
+
+            }
+            if (checkMailTask.Status < TaskStatus.RanToCompletion)
+            {
+                log.Info("waiting for checkmail");
+                await checkMailTask;
+            }
+            else
+            {
+                log.Info(checkMailTask.Status.ToString());
+            }
             
 
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
@@ -192,10 +201,13 @@ namespace ArchiveBot
             _clientId = Environment.GetEnvironmentVariable("botClientId");
             _hasRunInit = true;
             client = new HttpClient();
+
+            string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
+            client.BaseAddress = new Uri("https://" + mailBaseAddress);
         }
 
 
-        private static async Task ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log, CloudTable articleTable)
+        private static async Task ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log, CloudTable articleTable, NewsBankClient newsBankClient)
         {
             try
             {
@@ -281,7 +293,8 @@ namespace ArchiveBot
                             if (seattleTimesArticle.PublishDate.Date < DateTime.Now.Date)
                             {
                                 log.Info("article post is at least a day old, will make newsbank edit.");
-                                EditForNewsbank.GetCommentLine(new ArticlePost( seattleTimesArticle, comment),log).ContinueWith( y=>
+                                EditForNewsbank.GetCommentLine(new ArticlePost( seattleTimesArticle, comment), log, newsBankClient
+                                    ).ContinueWith( y=>
                                     EditForNewsbank.EditComment(y.Result,comment));
                                 log.Info("article post has been edited.");
                             }

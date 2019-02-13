@@ -8,11 +8,11 @@ using Microsoft.Azure.WebJobs.Host;
 
 namespace ArchiveBot.Objects.NewsBankDependancies
 {
-    public class EmptyCanLog : ICanLog
+    public class BasicCanLog : ICanLog
     {
 
         TraceWriter writer;
-        public void SetLog(TraceWriter log)
+        public BasicCanLog(TraceWriter log)
         {
             writer = log;
         }

@@ -19,15 +19,16 @@ using ArchiveBot.Objects;
 using Czf.Domain.NewsBankWrapper.Interfaces;
 using ArchiveBot.Objects.NewsBankDependancies.ignore;
 using ArchiveBot.Objects.NewsBankDependancies;
+using Microsoft.WindowsAzure.Storage.Table.Queryable;
 
 namespace ArchiveBot
 {
     public static class EditForNewsbank
     {
         private static bool _hasRunInit;
-        private static EmptyCanLog _log = null;    
-        private static NewsBankClient _newsBankClient;
-        private static IEZProxySignInCredentialsProvider _credProvider = null;
+        
+        
+        internal static IEZProxySignInCredentialsProvider _credProvider = null;
         private static bool? _debug;
         public static bool Debug
         {
@@ -58,41 +59,12 @@ namespace ArchiveBot
         [FunctionName("EditForNewsbank")]
         public static async Task Run([TimerTrigger("0 0 05 * * *")]TimerInfo myTimer, TraceWriter log)
         {
-            //try
-            //{
-        
-
-            //    Dictionary<string, string> login = new Dictionary<string, string>()
-            //    {
-            //        { LOGIN_FORM_PARAMETER, _credProvider.GetAccount()},
-            //        { PASSWORD_FORM_PARAMETER, _credProvider.GetPassword()}
-            //    };
-            //    var _httpClientHandler = new HttpClientHandler() { CookieContainer = new CookieContainer() };
-            //    var _httpClient = new HttpClient(_httpClientHandler);
-            //    using (FormUrlEncodedContent content = new FormUrlEncodedContent(login))
-            //    using (HttpResponseMessage httpResponseMessage = await _httpClient.PostAsync(new EnvironmentVariableEZProxySignInUriProvider().GetSignInUri(), content))
-            //    {
-
-            //        if (httpResponseMessage.StatusCode != HttpStatusCode.OK)
-            //        {
-            //            _log.Error($"Status code did not return 200: {httpResponseMessage.StatusCode} {httpResponseMessage.ReasonPhrase}");
-            //        }
-            //        else
-            //        {
-            //            _log.Info("Sign in successful");
-                        
-
-            //        }
-            //    }
-
-
-
-
-            //}
-            //catch(Exception e)
-            //{
-            //    log.Error(e.Message);
-            //}
+            NewsBankClient newsBankClient = new NewsBankClient(
+                new EnvironmentVariableEZProxySignInUriProvider(),
+                _credProvider,
+                new EnvironmentVariableProductBaseUriProvider(),
+                new BasicCanLog(log)
+                );
 
 
             CloudTable articleTable = CloudStorageAccount
@@ -102,13 +74,13 @@ namespace ArchiveBot
 
             if (checkTableExists)
             {
-                checkTableExists = false;
+                
                 articleTable.CreateIfNotExists();
             }
+            
+            DateTime today = new DateTime(DateTime.Today.Ticks, DateTimeKind.Utc);
+            TableQuery<ArticlePost> articlesPublishedBeforeToday = articleTable.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < today).AsTableQuery();
 
-            
-            IQueryable<ArticlePost> articlesPublishedBeforeToday = articleTable.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < DateTime.Today);
-            
 
 
 
@@ -119,6 +91,7 @@ namespace ArchiveBot
 
             if (checkTableExists)
             {
+                checkTableExists = false;
                 oauthTable.CreateIfNotExists();
             }
 
@@ -195,13 +168,15 @@ namespace ArchiveBot
                         TableOperation.InsertOrReplace(result));
                 log.Info("saving token");
             }
+
             List<Task> updateCommentTasks = new List<Task>();
+            
             foreach(ArticlePost ap in articlesPublishedBeforeToday)
             {
-                Task updateComment = GetCommentLine(ap, log)
+                Task updateComment = GetCommentLine(ap, log, newsBankClient)
                     .ContinueWith((commentLine) => 
                     {
-                        Comment c = r.GetComment(new Uri(ap.CommentUri));
+                        Comment c = r.GetComment(new Uri("https://www.reddit.com" + ap.CommentUri));
                         EditComment(commentLine.Result, c);
                         articleTable.Execute(TableOperation.Delete(ap));
                     }
@@ -209,13 +184,9 @@ namespace ArchiveBot
 
                 updateCommentTasks.Add(updateComment);
             }
-            log.Info("AwaitWhenALL");
-            await updateCommentTasks.First();
-            //await Task.WhenAll(updateCommentTasks.ToArray());
-            log.Info("AwaitWhenALL2");
-            log.Info("AwaitWhenALL3");
-            Console.Write("asdf");
-
+                        
+            await Task.WhenAll(updateCommentTasks.ToArray());
+            log.Info("AwaitWhenALL " + updateCommentTasks.Count.ToString());
         }
 
         static EditForNewsbank()
@@ -237,40 +208,40 @@ namespace ArchiveBot
                 _credProvider = new AzureKeyVaultEZProxySignInCredentialsProvider();
             }
 
-            _log = new EmptyCanLog();
-
-            _newsBankClient = new NewsBankClient(
-                new EnvironmentVariableEZProxySignInUriProvider(),
-                _credProvider, 
-                new EnvironmentVariableProductBaseUriProvider(),
-                _log
-                );
+            
             _hasRunInit = true;
         }
 
-        internal static async Task<string> GetCommentLine(ArticlePost articlePost, TraceWriter log)
+        internal static async Task<string> GetCommentLine(ArticlePost articlePost, TraceWriter log, NewsBankClient newsBankClient)
         {
-            log.Info("GetCommentLine");
-            _log.SetLog(log);
+            log.Info("GetCommentLine");          
+            
             SearchResult searchResult = null;
             try
             {
-                searchResult = await _newsBankClient.Search(
+                searchResult = await newsBankClient.Search(
                         new SearchRequest()
                         {
                             Product = Product.WorldNews,
                             Publications = new List<Publication>() { Publication.SeattleTimesWebEditionArticles },
-                            SearchParameter0 = new SearchParameter() { Field = SearchField.Author, Value = articlePost.ArticleAuthor },
+                            SearchParameter0 = new SearchParameter() { Field = SearchField.Author, Value = articlePost.ArticleAuthor.Replace("/",string.Empty) },
                             SearchParameter1 = new SearchParameter() { Field = SearchField.Headline, Value = articlePost.ArticleHeadline, ParameterCompoundOperator = CompoundOperator.AND },
                             SearchParameter2 = new SearchParameter() { Field = SearchField.Date, Value = articlePost.ArticleDate.ToShortDateString(), ParameterCompoundOperator = CompoundOperator.AND }
                         });
+            }
+            catch (NullReferenceException nullRefEx)  //not the best option.
+            {
+                log.Error("possible no Web edition result, " + articlePost.CommentUri);
+                log.Error(nullRefEx.Message);
+                log.Error(nullRefEx.StackTrace);
+                return string.Empty;
             }
             catch(Exception e)
             {
                 log.Error(e.Message);
                 throw;
             }
-            return $"[NewsBank version]({searchResult.FirstSearchResultItem.ResultItemUri}) via SPL [^SPL ^account ^required](https://www.spl.org/using-the-library/get-started/get-started-with-a-library-card/library-card-application)";
+            return $"[NewsBank version]({searchResult.FirstSearchResultItem.ResultItemUri}) via SPL [^(SPL) ^(account) ^(required)](https://www.spl.org/using-the-library/get-started/get-started-with-a-library-card/library-card-application)";
         }
 
         internal static void EditComment(string commentLine, Comment comment)
