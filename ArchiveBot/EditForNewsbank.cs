@@ -57,7 +57,7 @@ namespace ArchiveBot
         private const string LOGIN_FORM_PARAMETER = "user";
 
         [FunctionName("EditForNewsbank")]
-        public static async Task Run([TimerTrigger("0 0 05 * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("0 0 06 * * *")]TimerInfo myTimer, TraceWriter log)
         {
             NewsBankClient newsBankClient = new NewsBankClient(
                 new EnvironmentVariableEZProxySignInUriProvider(),
@@ -177,8 +177,15 @@ namespace ArchiveBot
                     .ContinueWith((commentLine) => 
                     {
                         Comment c = r.GetComment(new Uri("https://www.reddit.com" + ap.CommentUri));
-                        EditComment(commentLine.Result, c);
-                        articleTable.Execute(TableOperation.Delete(ap));
+                        if (!String.IsNullOrEmpty(commentLine.Result))
+                        {
+                            EditComment(commentLine.Result, c);
+                            articleTable.Execute(TableOperation.Delete(ap));
+                        }
+                        else
+                        {
+                            log.Info("Empty CommentLine update content");
+                        }
                     }
                     ,TaskContinuationOptions.OnlyOnRanToCompletion);
 
