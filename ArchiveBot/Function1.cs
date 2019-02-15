@@ -294,9 +294,20 @@ namespace ArchiveBot
                             {
                                 log.Info("article post is at least a day old, will make newsbank edit.");
                                 EditForNewsbank.GetCommentLine(new ArticlePost( seattleTimesArticle, comment), log, newsBankClient
-                                    ).ContinueWith( y=>
-                                    EditForNewsbank.EditComment(y.Result,comment));
-                                log.Info("article post has been edited.");
+                                    ).ContinueWith(y => {
+                                        if (!String.IsNullOrEmpty(y.Result))
+                                        {
+                                            EditForNewsbank.EditComment(y.Result, comment);
+                                            log.Info("article post has been edited.");
+                                        }
+                                        else
+                                        {
+                                            log.Info("commentline null or empty will store article post");
+                                            articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment))); 
+                                        }
+                                    }
+                                    );
+                                
                             }
                             else
                             {

@@ -57,7 +57,7 @@ namespace ArchiveBot
         private const string LOGIN_FORM_PARAMETER = "user";
 
         [FunctionName("EditForNewsbank")]
-        public static async Task Run([TimerTrigger("0 0 06 * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("0 0 07 * * *")]TimerInfo myTimer, TraceWriter log)
         {
             NewsBankClient newsBankClient = new NewsBankClient(
                 new EnvironmentVariableEZProxySignInUriProvider(),
@@ -232,7 +232,7 @@ namespace ArchiveBot
                             Product = Product.WorldNews,
                             Publications = new List<Publication>() { Publication.SeattleTimesWebEditionArticles },
                             SearchParameter0 = new SearchParameter() { Field = SearchField.Author, Value = articlePost.ArticleAuthor.Replace("/",string.Empty) },
-                            SearchParameter1 = new SearchParameter() { Field = SearchField.Headline, Value = articlePost.ArticleHeadline, ParameterCompoundOperator = CompoundOperator.AND },
+                            SearchParameter1 = new SearchParameter() { Field = SearchField.Headline, Value = $"\"{articlePost.ArticleHeadline}\"", ParameterCompoundOperator = CompoundOperator.AND },
                             SearchParameter2 = new SearchParameter() { Field = SearchField.Date, Value = articlePost.ArticleDate.ToShortDateString(), ParameterCompoundOperator = CompoundOperator.AND }
                         });
             }
