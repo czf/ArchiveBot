@@ -79,7 +79,7 @@ namespace ArchiveBot
             }
             
             DateTime today = new DateTime(DateTime.Today.Ticks, DateTimeKind.Utc);
-            TableQuery<ArticlePost> articlesPublishedBeforeToday = articleTable.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < today).AsTableQuery();
+            TableQuery<ArticlePost> articlesPublishedBeforeToday = articleTable.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < today && x.ArticleDate > today.AddDays(-3)).AsTableQuery();
 
 
 

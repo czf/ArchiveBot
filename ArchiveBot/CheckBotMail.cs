@@ -122,7 +122,7 @@ namespace ArchiveBot
                         //agent = new BotWebAgent(result.RefreshToken, clientId, secret, "https://www.reddit.com/user/somekindofbot0000/");
                         r = new Reddit(result.Token);
                     }
-                    catch (AuthenticationException a)
+                    catch (AuthenticationException )
                     {
                         result = null;
                         tryLogin = true;

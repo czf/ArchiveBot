@@ -27,7 +27,7 @@ namespace ArchiveBot.Objects
                 articleDocument.DocumentNode.SelectSingleNode("/html/head/meta[@itemprop='name']").GetAttributeValue("content", null));
             PublishDate  =
                 DateTime.Parse( articleDocument.DocumentNode.SelectSingleNode("/html/head/meta[@itemprop='datePublished']").GetAttributeValue("content", null));
-            HtmlNodeCollection authorNodesText = articleDocument.GetElementbyId("content").SelectNodes("//*[@class='article-byline']//a[@rel='author']/text()");
+            HtmlNodeCollection authorNodesText = articleDocument.GetElementbyId("content").SelectNodes("//*[@class='article-byline']//a[@rel='author']//text()");
 
 
             ByLineAuthors = authorNodesText.Select(x => x.InnerText).ToList().AsReadOnly();

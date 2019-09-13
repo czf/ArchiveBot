@@ -165,6 +165,7 @@ namespace ArchiveBot
 
             Task<HttpResponseMessage> checkMailTask = CheckMail(r, log, client);
 
+            //https://www.reddit.com/r/SeattleWA/search?q=%28+site%3Aseattletimes.com+Subreddit%3ASeattleWA+%29&sort=new&t=day
             Listing<Post> posts =
                 r.AdvancedSearch(x => x.Subreddit == "SeattleWA" &&
                 x.Site == "seattletimes.com"
@@ -222,7 +223,7 @@ namespace ArchiveBot
                 using (Task<HttpResponseMessage> targetGetResponse = client.GetAsync(target))
                 {
 
-                    Comment commentResult = null;
+                    
                     Task<Comment> commentTask = response.ContinueWith(async x =>
                     {
                         AvailableResponse availableResponse = x.Result;
@@ -286,9 +287,14 @@ namespace ArchiveBot
                         x =>
 
                     {
+                        log.Info("start newsbank");
                         Comment comment = commentTask.Result;
                         using (HttpResponseMessage articleResponse = targetGetResponse.Result)
                         {
+                            if(articleResponse == null)
+                            {
+                                log.Info("articleResponse is null");
+                            }
                             SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
                             if (seattleTimesArticle.PublishDate.Date < DateTime.Now.Date)
                             {
