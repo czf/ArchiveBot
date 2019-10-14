@@ -174,20 +174,31 @@ namespace ArchiveBot
             foreach(ArticlePost ap in articlesPublishedBeforeToday)
             {
                 Task updateComment = GetCommentLine(ap, log, newsBankClient)
-                    .ContinueWith((commentLine) => 
+                    .ContinueWith( async (commentLine) => 
                     {
-                        Comment c = r.GetComment(new Uri("https://www.reddit.com" + ap.CommentUri));
-                        if (!String.IsNullOrEmpty(commentLine.Result))
+                        bool retry = false;
+                        do
                         {
-                            EditComment(commentLine.Result, c);
-                            articleTable.Execute(TableOperation.Delete(ap));
-                        }
-                        else
-                        {
-                            log.Info("Empty CommentLine update content");
-                        }
+                            Comment c = r.GetComment(new Uri("https://www.reddit.com" + ap.CommentUri));
+                            if (!String.IsNullOrEmpty(commentLine.Result))
+                            {
+                                EditComment(commentLine.Result, c);
+                                articleTable.Execute(TableOperation.Delete(ap));
+                                retry = false;
+                            }
+                            else
+                            {
+                                log.Info("Empty CommentLine, will check headline.");
+                                retry = await TryUpdateArticleData(ap, r, articleTable, log);
+                                if (retry)
+                                {
+                                    log.Info($"author: {ap.ArticleAuthor} ---- headline: {ap.ArticleHeadline}");
+                                }
+
+                            }
+                        } while (retry);
                     }
-                    ,TaskContinuationOptions.OnlyOnRanToCompletion);
+                    ,TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
 
                 updateCommentTasks.Add(updateComment);
             }
@@ -249,6 +260,37 @@ namespace ArchiveBot
                 throw;
             }
             return $"[NewsBank version]({searchResult.FirstSearchResultItem.ResultItemUri}) via SPL [^(SPL) ^(account) ^(required)](https://www.spl.org/using-the-library/get-started/get-started-with-a-library-card/library-card-application)";
+        }
+
+        private static async Task<bool> TryUpdateArticleData(ArticlePost articlePost, Reddit r, CloudTable articleTable, TraceWriter log)
+        {
+            bool result = false;
+            Comment comment = r.GetComment(new Uri("https://www.reddit.com" + articlePost.CommentUri));
+            Post post = (Post)comment.Parent;
+
+            string articleUrl = post.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped);
+            using (HttpResponseMessage articleResponse = await client.GetAsync(articleUrl))
+            {
+                SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
+                if(seattleTimesArticle.Headline != articlePost.ArticleHeadline)
+                {
+                    log.Info("new headline: " + seattleTimesArticle.Headline);
+                    articlePost.ArticleHeadline = seattleTimesArticle.Headline;
+                    result = true;
+                }
+                if(seattleTimesArticle.ByLineAuthors.FirstOrDefault() != articlePost.ArticleAuthor)
+                {
+                    string author = seattleTimesArticle.ByLineAuthors.FirstOrDefault();
+                    log.Info("new author: " + author);
+                    articlePost.ArticleAuthor = author;
+                    result = true;
+                }
+                if (result)
+                {
+                    await articleTable.ExecuteAsync(TableOperation.InsertOrReplace(articlePost));
+                }
+            }
+            return result;
         }
 
         internal static void EditComment(string commentLine, Comment comment)
