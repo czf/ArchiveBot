@@ -22,6 +22,7 @@ using Microsoft.Azure;
 using ArchiveBot.Objects;
 using Czf.Api.NewsBankWrapper;
 using ArchiveBot.Objects.NewsBankDependancies;
+using System.Threading;
 
 namespace ArchiveBot
 {
@@ -171,11 +172,12 @@ namespace ArchiveBot
                 x.Site == "seattletimes.com"
             , Sorting.New, TimeSorting.Day);
 
+            bool allPostsSuccess = true;
             using (WaybackClient waybackMachine = new WaybackClient())
             {
                 foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
                 {
-                    await ProcessPost(p, waybackMachine, log, articleTable, newsBankClient);
+                    allPostsSuccess &= await ProcessPost(p, waybackMachine, log, articleTable, newsBankClient);
                 }
 
             }
@@ -191,6 +193,11 @@ namespace ArchiveBot
             
 
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
+
+            if (!allPostsSuccess)
+            {
+                throw new ApplicationException("Not all Posts were processed successfully");
+            }
         }
 
         private static void Init()
@@ -208,8 +215,9 @@ namespace ArchiveBot
         }
 
 
-        private static async Task ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log, CloudTable articleTable, NewsBankClient newsBankClient)
+        private static async Task<bool> ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log, CloudTable articleTable, NewsBankClient newsBankClient)
         {
+            bool successProcessPost = true;
             try
             {
                 if (!Debug)
@@ -249,6 +257,7 @@ namespace ArchiveBot
                                     if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
                                     {
                                         log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                                        Thread.Sleep(100);
                                     }
                                     else
                                     {
@@ -261,6 +270,7 @@ namespace ArchiveBot
                         } while (attempts > 0 && !success);
                         if (!success)
                         {
+                            successProcessPost = false;
                             throw new ApplicationException("Wayback machine wouldn't cache content.");
                         }
 
@@ -270,7 +280,9 @@ namespace ArchiveBot
 :0:
 
 ----
-^^I'm ^^a ^^bot, ^^beep ^^boop";
+^^You ^^can ^^support ^^Archive.org ^^via [^^Amazon ^^Smile](https://smile.amazon.com/ch/94-3242767)  
+^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^Amazon ^^Smile](https://smile.amazon.com/ch/91-1140642)  
+^^I'm ^^a ^^bot, ^^beep ^^boop [ ^^((fork) ^^me ^^on ^^github)](https://github.com/czf/ArchiveBot)";
 
                         log.Info(msg);
 
@@ -331,8 +343,9 @@ namespace ArchiveBot
             catch(Exception e)
             {
                 log.Error("", e);
-                throw;
+                successProcessPost = false;
             }
+            return successProcessPost;
         }
 
 

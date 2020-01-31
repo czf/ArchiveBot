@@ -34,15 +34,17 @@ namespace ArchiveBot
             get
             {
                 string result = null;
-                switch (new Random().Next(2))
+                switch (new Random().Next(3))
                 {
                     case 0:
                         result = "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)";
                         break;
                     case 1:
-                        result = "[Thanks](https://www.youtube.com/watch?v=hRb6ordY4J4)"; //thumbs up
+                        result = "[aww yeah](https://www.youtube.com/watch?v=r3J5XfnjvwY)"; 
                         break;
-
+                    case 2:
+                        result = "[nice](https://www.youtube.com/watch?v=Vv_3gcLhE9w)";
+                        break;
                         //https://www.youtube.com/watch?v=r3J5XfnjvwY  aww yeah
                         //https://gfycat.com/ifr/WeepyPresentCub blushing robot
                         //https://gfycat.com/ifr/DimwittedFavorableKillerwhale robot hug
