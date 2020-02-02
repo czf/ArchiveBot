@@ -236,7 +236,7 @@ namespace ArchiveBot
                     {
                         AvailableResponse availableResponse = x.Result;
 
-                        int attempts = 2;
+                        short attempts = 2;
                         bool success = false;
                         do
                         {
@@ -251,21 +251,24 @@ namespace ArchiveBot
                             {
                                 log.Info("creating snapshot.");
                                 archivedUrl = await waybackClient.SaveAsync(target);
-
-                                using (HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl))
+                                short validationAttempts = 2;
+                                do
                                 {
-                                    if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                                    validationAttempts--;
+                                    using (HttpResponseMessage responseCheck = await client.GetAsync(archivedUrl))
                                     {
-                                        log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
-                                        Thread.Sleep(100);
+                                        if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                                        {
+                                            log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                                            Thread.Sleep(100);
+                                        }
+                                        else
+                                        {
+                                            log.Info("check returned success.");
+                                            success = true;
+                                        }
                                     }
-                                    else
-                                    {
-                                        log.Info("check returned success.");
-                                        success = true;
-                                    }
-                                }
-
+                                } while (validationAttempts > 0 && !success);
                             }
                         } while (attempts > 0 && !success);
                         if (!success)
