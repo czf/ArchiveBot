@@ -209,6 +209,8 @@ namespace ArchiveBot
             _clientId = Environment.GetEnvironmentVariable("botClientId");
             _hasRunInit = true;
             client = new HttpClient();
+            //Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:73.0)
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:73.0)");
 
             string mailBaseAddress = Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
             client.BaseAddress = new Uri("https://" + mailBaseAddress);
@@ -230,8 +232,6 @@ namespace ArchiveBot
                 using (Task<AvailableResponse> response = waybackClient.AvailableAsync(target))
                 using (Task<HttpResponseMessage> targetGetResponse = client.GetAsync(target))
                 {
-
-                    
                     Task<Comment> commentTask = response.ContinueWith(async x =>
                     {
                         AvailableResponse availableResponse = x.Result;
@@ -283,9 +283,9 @@ namespace ArchiveBot
 :0:
 
 ----
-^^You ^^can ^^support ^^Archive.org ^^via [^^Amazon ^^Smile](https://smile.amazon.com/ch/94-3242767)  
-^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^Amazon ^^Smile](https://smile.amazon.com/ch/91-1140642)  
-^^I'm ^^a ^^bot, ^^beep ^^boop [ ^^((fork) ^^me ^^on ^^github)](https://github.com/czf/ArchiveBot)";
+^^You ^^can ^^support ^^Archive.org ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/94-3242767)  
+^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/91-1140642)  
+^^I'm ^^a ^^bot, ^^beep ^^boop [ ^^((fork) ^^(me) ^^(on) ^^(github))](https://github.com/czf/ArchiveBot)";
 
                         log.Info(msg);
 
@@ -297,47 +297,46 @@ namespace ArchiveBot
                         }
                         return comment;
                     }, TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
-
+                    Comment c = await commentTask;
                     await Task.WhenAll(targetGetResponse, commentTask).ContinueWith(
                         x =>
-
-                    {
-                        log.Info("start newsbank");
-                        Comment comment = commentTask.Result;
-                        using (HttpResponseMessage articleResponse = targetGetResponse.Result)
                         {
-                            if(articleResponse == null)
+                            log.Info("start newsbank");
+                            Comment comment = commentTask.Result;
+                            using (HttpResponseMessage articleResponse = targetGetResponse.Result)
                             {
-                                log.Info("articleResponse is null");
-                            }
-                            SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
-                            if (seattleTimesArticle.PublishDate.Date < DateTime.Now.Date)
-                            {
-                                log.Info("article post is at least a day old, will make newsbank edit.");
-                                EditForNewsbank.GetCommentLine(new ArticlePost( seattleTimesArticle, comment), log, newsBankClient
-                                    ).ContinueWith(y => {
-                                        if (!String.IsNullOrEmpty(y.Result))
+                                if (articleResponse == null)
+                                {
+                                    log.Info("articleResponse is null");
+                                }
+                                SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
+                                if (seattleTimesArticle.PublishDate.Date < DateTime.Now.Date)
+                                {
+                                    log.Info("article post is at least a day old, will make newsbank edit.");
+                                    EditForNewsbank.GetCommentLine(new ArticlePost(seattleTimesArticle, comment), log, newsBankClient
+                                        ).ContinueWith(y =>
                                         {
-                                            EditForNewsbank.EditComment(y.Result, comment);
-                                            log.Info("article post has been edited.");
-                                        }
-                                        else
-                                        {
-                                            log.Info("commentline null or empty will store article post");
-                                            articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment))); 
-                                        }
-                                    }
-                                    );
-                                
-                            }
-                            else
-                            {
-                                log.Info("will store article post");
-                                articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
-                            }
-                        }
+                                            if (!String.IsNullOrEmpty(y.Result))
+                                            {
+                                                EditForNewsbank.EditComment(y.Result, comment);
+                                                log.Info("article post has been edited.");
+                                            }
+                                            else
+                                            {
+                                                log.Info("commentline null or empty will store article post");
+                                                articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                                            }
+                                        });
 
-                    }, TaskContinuationOptions.OnlyOnRanToCompletion);
+                                }
+                                else
+                                {
+                                    log.Info("will store article post");
+                                    articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                                }
+                            }
+
+                        }, TaskContinuationOptions.OnlyOnRanToCompletion);
 
                     //TODO Dispose AvailableResponse;
 

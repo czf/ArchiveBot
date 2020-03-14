@@ -214,6 +214,7 @@ namespace ArchiveBot
             _pass = Environment.GetEnvironmentVariable("BotPass");
             _secret = Environment.GetEnvironmentVariable("BotSecret");
             _clientId = Environment.GetEnvironmentVariable("botClientId");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:73.0)");
 
             
 
