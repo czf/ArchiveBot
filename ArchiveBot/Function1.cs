@@ -23,6 +23,7 @@ using ArchiveBot.Objects;
 using Czf.Api.NewsBankWrapper;
 using ArchiveBot.Objects.NewsBankDependancies;
 using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace ArchiveBot
 {
@@ -54,7 +55,7 @@ namespace ArchiveBot
 
         
         [FunctionName("ArchiveBot")]
-        public static async Task Run([TimerTrigger("00 */10 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("00 */10 * * * *")]TimerInfo myTimer, ILogger log)
         {
             
             if (!_hasRunInit)
@@ -95,7 +96,7 @@ namespace ArchiveBot
             if(result?.GetNewToken < DateTimeOffset.Now)
             {
                 result = null;
-                log.Info("need a new token");
+                log.LogInformation("need a new token");
             }
 
             Reddit r = null;
@@ -152,7 +153,7 @@ namespace ArchiveBot
                 oauthTable
                     .Execute(
                         TableOperation.InsertOrReplace(result));
-                log.Info("saving token");
+                log.LogInformation("saving token");
             }
 
             NewsBankClient newsBankClient = new NewsBankClient(
@@ -183,16 +184,16 @@ namespace ArchiveBot
             }
             if (checkMailTask.Status < TaskStatus.RanToCompletion)
             {
-                log.Info("waiting for checkmail");
+                log.LogInformation("waiting for checkmail");
                 await checkMailTask;
             }
             else
             {
-                log.Info(checkMailTask.Status.ToString());
+                log.LogInformation(checkMailTask.Status.ToString());
             }
             
 
-            log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
+            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
             if (!allPostsSuccess)
             {
@@ -217,7 +218,7 @@ namespace ArchiveBot
         }
 
 
-        private static async Task<bool> ProcessPost(Post p, WaybackClient waybackClient, TraceWriter log, CloudTable articleTable, NewsBankClient newsBankClient)
+        private static async Task<bool> ProcessPost(Post p, WaybackClient waybackClient, ILogger log, CloudTable articleTable, NewsBankClient newsBankClient)
         {
             bool successProcessPost = true;
             try
@@ -227,7 +228,7 @@ namespace ArchiveBot
                     p.Hide();
                 }
                 Uri archivedUrl = null;
-                log.Info(p.Url.ToString());
+                log.LogInformation(p.Url.ToString());
                 Uri target = new Uri(p.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped));
                 using (Task<AvailableResponse> response = waybackClient.AvailableAsync(target))
                 using (Task<HttpResponseMessage> targetGetResponse = client.GetAsync(target))
@@ -244,12 +245,12 @@ namespace ArchiveBot
                             if (availableResponse?.archived_snapshots?.closest?.available == true)
                             {
                                 archivedUrl = availableResponse.archived_snapshots.closest.url;
-                                log.Info("using available snapshot.");
+                                log.LogInformation("using available snapshot.");
                                 success = true;
                             }
                             else
                             {
-                                log.Info("creating snapshot.");
+                                log.LogInformation("creating snapshot.");
                                 archivedUrl = await waybackClient.SaveAsync(target);
                                 short validationAttempts = 2;
                                 do
@@ -259,12 +260,12 @@ namespace ArchiveBot
                                     {
                                         if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
                                         {
-                                            log.Warning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                                            log.LogWarning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
                                             Thread.Sleep(100);
                                         }
                                         else
                                         {
-                                            log.Info("check returned success.");
+                                            log.LogInformation("check returned success.");
                                             success = true;
                                         }
                                     }
@@ -287,7 +288,7 @@ namespace ArchiveBot
 ^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/91-1140642)  
 ^^I'm ^^a ^^bot, ^^beep ^^boop [ ^^((fork) ^^(me) ^^(on) ^^(github))](https://github.com/czf/ArchiveBot)";
 
-                        log.Info(msg);
+                        log.LogInformation(msg);
 
 
                         Comment comment = null;
@@ -301,29 +302,29 @@ namespace ArchiveBot
                     await Task.WhenAll(targetGetResponse, commentTask).ContinueWith(
                         x =>
                         {
-                            log.Info("start newsbank");
+                            log.LogInformation("start newsbank");
                             Comment comment = commentTask.Result;
                             using (HttpResponseMessage articleResponse = targetGetResponse.Result)
                             {
                                 if (articleResponse == null)
                                 {
-                                    log.Info("articleResponse is null");
+                                    log.LogInformation("articleResponse is null");
                                 }
                                 SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
                                 if (seattleTimesArticle.PublishDate.Date < DateTime.Now.Date)
                                 {
-                                    log.Info("article post is at least a day old, will make newsbank edit.");
+                                    log.LogInformation("article post is at least a day old, will make newsbank edit.");
                                     EditForNewsbank.GetCommentLine(new ArticlePost(seattleTimesArticle, comment), log, newsBankClient
                                         ).ContinueWith(y =>
                                         {
                                             if (!String.IsNullOrEmpty(y.Result))
                                             {
                                                 EditForNewsbank.EditComment(y.Result, comment);
-                                                log.Info("article post has been edited.");
+                                                log.LogInformation("article post has been edited.");
                                             }
                                             else
                                             {
-                                                log.Info("commentline null or empty will store article post");
+                                                log.LogInformation("commentline null or empty will store article post");
                                                 articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
                                             }
                                         });
@@ -331,7 +332,7 @@ namespace ArchiveBot
                                 }
                                 else
                                 {
-                                    log.Info("will store article post");
+                                    log.LogInformation("will store article post");
                                     articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
                                 }
                             }
@@ -344,24 +345,24 @@ namespace ArchiveBot
             }
             catch(Exception e)
             {
-                log.Error("", e);
+                log.LogError("", e);
                 successProcessPost = false;
             }
             return successProcessPost;
         }
 
 
-        private static Task<HttpResponseMessage> CheckMail(Reddit r, TraceWriter log, HttpClient client)
+        private static Task<HttpResponseMessage> CheckMail(Reddit r, ILogger log, HttpClient client)
         {
             Task<HttpResponseMessage> result = Task.FromResult<HttpResponseMessage>(null);
             if (r.User.HasMail)
             {
-                log.Info("has mail");
+                log.LogInformation("has mail");
                 
                     if (!Debug)
                     {
                         result = client.PostAsync($"/api/CheckBotMail/name/{r.User.Name}/", null);
-                        log.Info("posting:" + client.BaseAddress + $"/api/CheckBotMail/name/{r.User.Name}/ \n {result.Status}");
+                        log.LogInformation("posting:" + client.BaseAddress + $"/api/CheckBotMail/name/{r.User.Name}/ \n {result.Status}");
                     }
             }
             return result;

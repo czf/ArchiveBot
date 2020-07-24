@@ -20,6 +20,7 @@ using Czf.Domain.NewsBankWrapper.Interfaces;
 using ArchiveBot.Objects.NewsBankDependancies.ignore;
 using ArchiveBot.Objects.NewsBankDependancies;
 using Microsoft.WindowsAzure.Storage.Table.Queryable;
+using Microsoft.Extensions.Logging;
 
 namespace ArchiveBot
 {
@@ -57,7 +58,7 @@ namespace ArchiveBot
         private const string LOGIN_FORM_PARAMETER = "user";
 
         [FunctionName("EditForNewsbank")]
-        public static async Task Run([TimerTrigger("0 0 07 * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task Run([TimerTrigger("0 0 07 * * *")]TimerInfo myTimer, ILogger log)
         {
             NewsBankClient newsBankClient = new NewsBankClient(
                 new EnvironmentVariableEZProxySignInUriProvider(),
@@ -79,7 +80,7 @@ namespace ArchiveBot
             }
             
             DateTime today = new DateTime(DateTime.Today.Ticks, DateTimeKind.Utc);
-            TableQuery<ArticlePost> articlesPublishedBeforeToday = articleTable.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < today && x.ArticleDate > today.AddDays(-3)).AsTableQuery();
+            TableQuery<ArticlePost> articlesPublishedBeforeToday = articleTable.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < today && x.ArticleDate > today.AddDays(-27)).AsTableQuery();
 
 
 
@@ -109,7 +110,7 @@ namespace ArchiveBot
             if (result?.GetNewToken < DateTimeOffset.Now)
             {
                 result = null;
-                log.Info("need a new token");
+                log.LogInformation("need a new token");
             }
 
             Reddit r = null;
@@ -166,7 +167,7 @@ namespace ArchiveBot
                 oauthTable
                     .Execute(
                         TableOperation.InsertOrReplace(result));
-                log.Info("saving token");
+                log.LogInformation("saving token");
             }
 
             List<Task> updateCommentTasks = new List<Task>();
@@ -188,11 +189,11 @@ namespace ArchiveBot
                             }
                             else
                             {
-                                log.Info("Empty CommentLine, will check headline.");
+                                log.LogInformation("Empty CommentLine, will check headline.");
                                 retry = await TryUpdateArticleData(ap, r, articleTable, log);
                                 if (retry)
                                 {
-                                    log.Info($"author: {ap.ArticleAuthor} ---- headline: {ap.ArticleHeadline}");
+                                    log.LogInformation($"author: {ap.ArticleAuthor} ---- headline: {ap.ArticleHeadline}");
                                 }
 
                             }
@@ -204,7 +205,7 @@ namespace ArchiveBot
             }
                         
             await Task.WhenAll(updateCommentTasks.ToArray());
-            log.Info("AwaitWhenALL " + updateCommentTasks.Count.ToString());
+            log.LogInformation("AwaitWhenALL " + updateCommentTasks.Count.ToString());
         }
 
         static EditForNewsbank()
@@ -231,9 +232,9 @@ namespace ArchiveBot
             _hasRunInit = true;
         }
 
-        internal static async Task<string> GetCommentLine(ArticlePost articlePost, TraceWriter log, NewsBankClient newsBankClient)
+        internal static async Task<string> GetCommentLine(ArticlePost articlePost, ILogger log, NewsBankClient newsBankClient)
         {
-            log.Info("GetCommentLine");          
+            log.LogInformation("GetCommentLine");          
             
             SearchResult searchResult = null;
             try
@@ -250,20 +251,20 @@ namespace ArchiveBot
             }
             catch (NullReferenceException nullRefEx)  //not the best option.
             {
-                log.Error("possible no Web edition result, " + articlePost.CommentUri);
-                log.Error(nullRefEx.Message);
-                log.Error(nullRefEx.StackTrace);
+                log.LogError("possible no Web edition result, " + articlePost.CommentUri);
+                log.LogError(nullRefEx.Message);
+                log.LogError(nullRefEx.StackTrace);
                 return string.Empty;
             }
             catch(Exception e)
             {
-                log.Error(e.Message);
+                log.LogError(e.Message);
                 throw;
             }
             return $"[NewsBank version]({searchResult.FirstSearchResultItem.ResultItemUri}) via SPL [^(SPL) ^(account) ^(required)](https://www.spl.org/using-the-library/get-started/get-started-with-a-library-card/library-card-application)";
         }
 
-        private static async Task<bool> TryUpdateArticleData(ArticlePost articlePost, Reddit r, CloudTable articleTable, TraceWriter log)
+        private static async Task<bool> TryUpdateArticleData(ArticlePost articlePost, Reddit r, CloudTable articleTable, ILogger log)
         {
             bool result = false;
             Comment comment = r.GetComment(new Uri("https://www.reddit.com" + articlePost.CommentUri));
@@ -275,14 +276,14 @@ namespace ArchiveBot
                 SeattleTimesArticle seattleTimesArticle = new SeattleTimesArticle(articleResponse);
                 if(seattleTimesArticle.Headline != articlePost.ArticleHeadline)
                 {
-                    log.Info("new headline: " + seattleTimesArticle.Headline);
+                    log.LogInformation("new headline: " + seattleTimesArticle.Headline);
                     articlePost.ArticleHeadline = seattleTimesArticle.Headline;
                     result = true;
                 }
                 if(seattleTimesArticle.ByLineAuthors.FirstOrDefault() != articlePost.ArticleAuthor)
                 {
                     string author = seattleTimesArticle.ByLineAuthors.FirstOrDefault();
-                    log.Info("new author: " + author);
+                    log.LogInformation("new author: " + author);
                     articlePost.ArticleAuthor = author;
                     result = true;
                 }

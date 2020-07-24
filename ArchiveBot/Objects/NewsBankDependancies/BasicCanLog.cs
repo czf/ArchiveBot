@@ -5,26 +5,27 @@ using System.Text;
 using System.Threading.Tasks;
 using Czf.Domain.NewsBankWrapper.Interfaces;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Logging;
 
 namespace ArchiveBot.Objects.NewsBankDependancies
 {
     public class BasicCanLog : ICanLog
     {
 
-        TraceWriter writer;
-        public BasicCanLog(TraceWriter log)
+        ILogger writer;
+        public BasicCanLog(ILogger log)
         {
             writer = log;
         }
 
         public void Error(string message)
         {
-            writer.Error(message);
+            writer.LogError(message);
         }
 
         public void Info(string message)
         {
-            writer.Info(message);
+            writer.LogInformation(message);
         }
     }
 }

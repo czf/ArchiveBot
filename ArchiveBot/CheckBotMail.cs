@@ -11,6 +11,7 @@ using System.Linq;
 using RedditSharp;
 using RedditSharp.Things;
 using System.Security.Authentication;
+using Microsoft.Extensions.Logging;
 
 namespace ArchiveBot
 {
@@ -83,7 +84,7 @@ namespace ArchiveBot
         }
 
         [FunctionName("CheckBotMail")]
-        public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous,  "post", Route = "CheckBotMail/name/{name}")]HttpRequestMessage req, string name, TraceWriter log)
+        public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous,  "post", Route = "CheckBotMail/name/{name}")]HttpRequestMessage req, string name, ILogger log)
         {
             string storage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
 
@@ -193,13 +194,13 @@ namespace ArchiveBot
                 //}
             }
 
-            log.Info("C# HTTP trigger function processed a request.");
+            log.LogInformation("C# HTTP trigger function processed a request.");
 
             // Fetching the name from the path parameter in the request URL
             return req.CreateResponse(HttpStatusCode.OK);
         }
 
-        private static void ReplyAction(string replyMsg, Comment comment, TraceWriter log, bool isUnknownMessage)
+        private static void ReplyAction(string replyMsg, Comment comment, ILogger log, bool isUnknownMessage)
         {
             if (!Debug)
             {
@@ -209,11 +210,11 @@ namespace ArchiveBot
             if(!isUnknownMessage && !Debug)
             {
                 comment.Reply(replyMsg);
-                log.Info($"Replying with: {replyMsg}");
+                log.LogInformation($"Replying with: {replyMsg}");
             }
             else
             {
-                log.Info(replyMsg);
+                log.LogInformation(replyMsg);
             }
 
             
