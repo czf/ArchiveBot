@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
-using System.Web;
-
 using System.Threading.Tasks;
+using System.Net;
 using HtmlAgilityPack;
 namespace ArchiveBot.Objects
 {
@@ -23,7 +21,7 @@ namespace ArchiveBot.Objects
             articleDocument.LoadHtml(content.GetAwaiter().GetResult());
 
 
-            Headline = HttpUtility.HtmlDecode(
+            Headline = WebUtility.HtmlDecode(
                 articleDocument.DocumentNode.SelectSingleNode("/html/head/meta[@itemprop='name']").GetAttributeValue("content", null));
             PublishDate  =
                 DateTime.Parse( articleDocument.DocumentNode.SelectSingleNode("/html/head/meta[@itemprop='datePublished']").GetAttributeValue("content", null));

@@ -6,8 +6,6 @@ using System.Net.Http;
 using System.Security.Authentication;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using RedditSharp;
 using RedditSharp.Things;
 using Czf.Api.NewsBankWrapper;
@@ -19,8 +17,12 @@ using ArchiveBot.Objects;
 using Czf.Domain.NewsBankWrapper.Interfaces;
 using ArchiveBot.Objects.NewsBankDependancies.ignore;
 using ArchiveBot.Objects.NewsBankDependancies;
-using Microsoft.WindowsAzure.Storage.Table.Queryable;
+
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Management.Storage.Models;
+using Azure.Data.Tables;
+using Azure.Data.Tables.Models;
+using Azure;
 
 namespace ArchiveBot
 {
@@ -66,44 +68,55 @@ namespace ArchiveBot
                 new EnvironmentVariableProductBaseUriProvider(),
                 new BasicCanLog(log)
                 );
+    
+            var serviceClient = new TableServiceClient(
+                new Uri(_storage),
+                new TableSharedKeyCredential(/*accountName*/ null, /*StorageAccountKey*/ null));
 
+            
 
-            CloudTable articleTable = CloudStorageAccount
-                .Parse(_storage)
-                .CreateCloudTableClient()
-                .GetTableReference("article");
+            //CloudTable articleTable = CloudStorageAccount
+            //    .Parse(_storage)
+            //    .CreateCloudTableClient()
+            //    .GetTableReference("article");
+            
 
             if (checkTableExists)
             {
-                
-                articleTable.CreateIfNotExists();
+
+                _ = await serviceClient.CreateTableIfNotExistsAsync("article");
             }
+
+            var articleTableClient = serviceClient.GetTableClient("article");
             
             DateTime today = new DateTime(DateTime.Today.Ticks, DateTimeKind.Utc);
-            TableQuery<ArticlePost> articlesPublishedBeforeToday = articleTable.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < today && x.ArticleDate > today.AddDays(-27)).AsTableQuery();
+            AsyncPageable<ArticlePost> articlesPublishedBeforeToday = articleTableClient.QueryAsync<ArticlePost>(x => x.ArticleDate < today && x.ArticleDate > today.AddDays(-27));
 
 
+            //TableQuery<ArticlePost> articlesPublishedBeforeToday = articleTableClient.CreateQuery<ArticlePost>().Where(x => x.ArticleDate < today && x.ArticleDate > today.AddDays(-27)).AsTableQuery();
+
+            
 
 
-            CloudTable oauthTable = CloudStorageAccount
-                .Parse(_storage)
-                .CreateCloudTableClient()
-                .GetTableReference("oauth");
+            //CloudTable oauthTable = CloudStorageAccount
+            //    .Parse(_storage)
+            //    .CreateCloudTableClient()
+            //    .GetTableReference("oauth");
 
             if (checkTableExists)
             {
                 checkTableExists = false;
-                oauthTable.CreateIfNotExists();
+                _ = await serviceClient.CreateTableIfNotExistsAsync("oauth");
             }
 
+            var oauthTableClient = serviceClient.GetTableClient("oauth");
 
 
 
-
-            RedditOAuth result = (RedditOAuth)oauthTable
-                .Execute(
-                    TableOperation.Retrieve<RedditOAuth>("reddit", _user)
-                ).Result;
+            RedditOAuth result = await oauthTableClient.GetEntityAsync<RedditOAuth>("reddit", _user);
+                //.Execute(
+                //    TableOperation.Retrieve<RedditOAuth>("reddit", _user)
+                //).Result;
             //https://blog.maartenballiauw.be/post/2012/10/08/what-partitionkey-and-rowkey-are-for-in-windows-azure-table-storage.html
             //https://www.red-gate.com/simple-talk/cloud/cloud-data/an-introduction-to-windows-azure-table-storage/
 
@@ -164,15 +177,17 @@ namespace ArchiveBot
 
             if (saveToken)
             {
-                oauthTable
-                    .Execute(
-                        TableOperation.InsertOrReplace(result));
+                await oauthTableClient.UpsertEntityAsync(result);
+                    //.Execute(
+                    //    TableOperation.InsertOrReplace(result));
                 log.LogInformation("saving token");
             }
-
+            IEnumerable<Azure.Page<ArticlePost>> f = null;
+            var p = f.SelectMany(x => x.Values);
             List<Task> updateCommentTasks = new List<Task>();
+            //<Azure.Page<ArticlePost>, IAsyncEnumerableArticlePost>
             
-            foreach(ArticlePost ap in articlesPublishedBeforeToday)
+            await foreach (ArticlePost ap in articlesPublishedBeforeToday)
             {
                 Task updateComment = GetCommentLine(ap, log, newsBankClient)
                     .ContinueWith( async (commentLine) => 
@@ -184,13 +199,14 @@ namespace ArchiveBot
                             if (!String.IsNullOrEmpty(commentLine.Result))
                             {
                                 EditComment(commentLine.Result, c);
-                                articleTable.Execute(TableOperation.Delete(ap));
+                                await articleTableClient.DeleteEntityAsync(ap.PartitionKey,ap.RowKey);
+                                //articleTableClient.Execute(TableOperation.Delete(ap));
                                 retry = false;
                             }
                             else
                             {
                                 log.LogInformation("Empty CommentLine, will check headline.");
-                                retry = await TryUpdateArticleData(ap, r, articleTable, log);
+                                retry = await TryUpdateArticleData(ap, r, articleTableClient, log);
                                 if (retry)
                                 {
                                     log.LogInformation($"author: {ap.ArticleAuthor} ---- headline: {ap.ArticleHeadline}");
@@ -264,7 +280,7 @@ namespace ArchiveBot
             return $"[NewsBank version]({searchResult.FirstSearchResultItem.ResultItemUri}) via SPL [^(SPL) ^(account) ^(required)](https://www.spl.org/using-the-library/get-started/get-started-with-a-library-card/library-card-application)";
         }
 
-        private static async Task<bool> TryUpdateArticleData(ArticlePost articlePost, Reddit r, CloudTable articleTable, ILogger log)
+        private static async Task<bool> TryUpdateArticleData(ArticlePost articlePost, Reddit r, TableClient articleTableClient, ILogger log)
         {
             bool result = false;
             Comment comment = r.GetComment(new Uri("https://www.reddit.com" + articlePost.CommentUri));
@@ -289,7 +305,8 @@ namespace ArchiveBot
                 }
                 if (result)
                 {
-                    await articleTable.ExecuteAsync(TableOperation.InsertOrReplace(articlePost));
+                    //await articleTable.ExecuteAsync(TableOperation.InsertOrReplace(articlePost));
+                    await articleTableClient.UpsertEntityAsync(articlePost);
                 }
             }
             return result;
