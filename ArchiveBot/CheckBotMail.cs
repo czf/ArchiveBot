@@ -12,6 +12,8 @@ using RedditSharp;
 using RedditSharp.Things;
 using System.Security.Authentication;
 using Microsoft.Extensions.Logging;
+using Azure.Data.Tables;
+using System.Threading.Tasks;
 
 namespace ArchiveBot
 {
@@ -84,7 +86,7 @@ namespace ArchiveBot
         }
 
         [FunctionName("CheckBotMail")]
-        public static HttpResponseMessage Run([HttpTrigger(AuthorizationLevel.Anonymous,  "post", Route = "CheckBotMail/name/{name}")]HttpRequestMessage req, string name, ILogger log)
+        public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Anonymous,  "post", Route = "CheckBotMail/name/{name}")]HttpRequestMessage req, string name, ILogger log)
         {
             string storage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
 
@@ -93,17 +95,21 @@ namespace ArchiveBot
             string secret = Environment.GetEnvironmentVariable("BotSecret");
             string clientId = Environment.GetEnvironmentVariable("botClientId");
 
-            CloudTable oauthTable = CloudStorageAccount
-               .Parse(storage)
-               .CreateCloudTableClient()
-               .GetTableReference("oauth");
+            //CloudTable oauthTable = CloudStorageAccount
+            //   .Parse(storage)
+            //   .CreateCloudTableClient()
+            //   .GetTableReference("oauth");
 
-            RedditOAuth result = (RedditOAuth)oauthTable
-                .Execute(
-                    TableOperation.Retrieve<RedditOAuth>("reddit", user)
-                ).Result;
+            var serviceClient = new TableServiceClient(
+                new Uri(storage),
+                new TableSharedKeyCredential(/*accountName*/ null, /*StorageAccountKey*/ null));
 
-
+            //RedditOAuth result = (RedditOAuth)oauthTable
+            //    .Execute(
+            //        TableOperation.Retrieve<RedditOAuth>("reddit", user)
+            //    ).Result;
+            var oauthTableClient = serviceClient.GetTableClient("oauth");
+            RedditOAuth result = await oauthTableClient.GetEntityAsync<RedditOAuth>("reddit", user);
             Reddit r = null;
             BotWebAgent agent = null;
             bool tryLogin = false;

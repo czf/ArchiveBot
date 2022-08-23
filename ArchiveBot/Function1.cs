@@ -15,8 +15,8 @@ using RedditSharp.Things;
 using WaybackMachineWrapper;
 using System.Threading.Tasks;
 using System.Net.Http;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+//using Microsoft.WindowsAzure.Storage;
+//using Microsoft.WindowsAzure.Storage.Table;
 using System.Security.Authentication;
 using Microsoft.Azure;
 using ArchiveBot.Objects;
@@ -24,6 +24,8 @@ using Czf.Api.NewsBankWrapper;
 using ArchiveBot.Objects.NewsBankDependancies;
 using System.Threading;
 using Microsoft.Extensions.Logging;
+using Azure.Data.Tables;
+using Azure;
 
 namespace ArchiveBot
 {
@@ -51,7 +53,7 @@ namespace ArchiveBot
         private static string _secret;
         private static string _clientId;
         private static HttpClient client;
-        private static bool checkTableExists = false;
+        private static bool checkTableExists = true;
 
         
         [FunctionName("ArchiveBot")]
@@ -64,36 +66,42 @@ namespace ArchiveBot
                 
             }
 
-            
-            CloudTable oauthTable = CloudStorageAccount
-                .Parse(_storage)
-                .CreateCloudTableClient()
-                .GetTableReference("oauth");
+            var serviceClient = new TableServiceClient(
+                new Uri(_storage),
+                new TableSharedKeyCredential(/*accountName*/ null, /*StorageAccountKey*/ null));
+
+            //CloudTable oauthTable = CloudStorageAccount
+            //    .Parse(_storage)
+            //    .CreateCloudTableClient()
+            //    .GetTableReference("oauth");
             
             if (checkTableExists)
             {
-                oauthTable.CreateIfNotExists();
+                _ = await serviceClient.CreateTableIfNotExistsAsync("oauth");
             }
+            var oauthTableClient = serviceClient.GetTableClient("oauth");
 
-            CloudTable articleTable = CloudStorageAccount
-                            .Parse(_storage)
-                            .CreateCloudTableClient()
-                            .GetTableReference("article");
+            //CloudTable articleTable = CloudStorageAccount
+            //                .Parse(_storage)
+            //                .CreateCloudTableClient()
+            //                .GetTableReference("article");
 
             if (checkTableExists)
             {
-                articleTable.CreateIfNotExists();
-                checkTableExists = true;
+                _ = await serviceClient.CreateTableIfNotExistsAsync("article");
+                checkTableExists = false;
             }
+            var articleTableClient = serviceClient.GetTableClient("article");
 
-            RedditOAuth result = (RedditOAuth)oauthTable
-                .Execute(
-                    TableOperation.Retrieve<RedditOAuth>("reddit", _user)
-                ).Result;
+            RedditOAuth result = await oauthTableClient.GetEntityAsync<RedditOAuth>("reddit", _user);
+            //(RedditOAuth)oauthTable
+            //.Execute(
+            //    TableOperation.Retrieve<RedditOAuth>("reddit", _user)
+            //).Result;
             //https://blog.maartenballiauw.be/post/2012/10/08/what-partitionkey-and-rowkey-are-for-in-windows-azure-table-storage.html
             //https://www.red-gate.com/simple-talk/cloud/cloud-data/an-introduction-to-windows-azure-table-storage/
 
-            if(result?.GetNewToken < DateTimeOffset.Now)
+            if (result?.GetNewToken < DateTimeOffset.Now)
             {
                 result = null;
                 log.LogInformation("need a new token");
@@ -147,12 +155,12 @@ namespace ArchiveBot
 
             if (r == null)
                 throw new Exception("couldn't get logged in");
-            
+
             if (saveToken)
             {
-                oauthTable
-                    .Execute(
-                        TableOperation.InsertOrReplace(result));
+                await oauthTableClient.UpsertEntityAsync(result);
+                //.Execute(
+                //    TableOperation.InsertOrReplace(result));
                 log.LogInformation("saving token");
             }
 
@@ -178,7 +186,7 @@ namespace ArchiveBot
             {
                 foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
                 {
-                    allPostsSuccess &= await ProcessPost(p, waybackMachine, log, articleTable, newsBankClient);
+                    allPostsSuccess &= await ProcessPost(p, waybackMachine, log, articleTableClient, newsBankClient);
                 }
 
             }
@@ -218,7 +226,7 @@ namespace ArchiveBot
         }
 
 
-        private static async Task<bool> ProcessPost(Post p, WaybackClient waybackClient, ILogger log, CloudTable articleTable, NewsBankClient newsBankClient)
+        private static async Task<bool> ProcessPost(Post p, WaybackClient waybackClient, ILogger log, TableClient articleTableClient, NewsBankClient newsBankClient)
         {
             bool successProcessPost = true;
             try
@@ -325,7 +333,9 @@ namespace ArchiveBot
                                             else
                                             {
                                                 log.LogInformation("commentline null or empty will store article post");
-                                                articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                                                articleTableClient.UpsertEntity(
+                                                    new ArticlePost(seattleTimesArticle, comment));
+                                                //articleTableClient.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
                                             }
                                         });
 
@@ -333,7 +343,9 @@ namespace ArchiveBot
                                 else
                                 {
                                     log.LogInformation("will store article post");
-                                    articleTable.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                                    //articleTableClient.Execute(TableOperation.InsertOrReplace(new ArticlePost(seattleTimesArticle, comment)));
+                                    articleTableClient.UpsertEntity(
+                                                    new ArticlePost(seattleTimesArticle, comment));
                                 }
                             }
 
@@ -368,12 +380,16 @@ namespace ArchiveBot
             return result;
         }
     }
-    public class ArticlePost : TableEntity
+    public class ArticlePost : ITableEntity
     {
         public string ArticleAuthor { get; set; }
         public string ArticleHeadline { get; set; }
         public DateTime ArticleDate { get; set; }
         public string CommentUri { get; set; }
+        public string PartitionKey { get; set; }
+        public string RowKey { get; set; }
+        public DateTimeOffset? Timestamp { get; set; }
+        public ETag ETag { get;  set; }
 
         public ArticlePost() { }
         public ArticlePost(SeattleTimesArticle seattleTimesArticle, Comment comment)
@@ -388,9 +404,13 @@ namespace ArchiveBot
         }
     }
 
-    public class RedditOAuth : TableEntity
+    public class RedditOAuth : ITableEntity
     {
         public string Token { get; set; }
         public DateTimeOffset GetNewToken { get; set; }
+        public string PartitionKey { get ; set ; }
+        public string RowKey { get; set ; }
+        public DateTimeOffset? Timestamp { get ; set ; }
+        public ETag ETag { get ; set ; }
     }
 }
