@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29728.190
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32811.315
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArchiveBot", "ArchiveBot\ArchiveBot.csproj", "{4D53D399-DDEE-4777-87A9-173BF4366818}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{C52F4CD7-B588-479A-89FC-6CE446B5AD77}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{C52F4CD7-B588-479A-89FC-6CE446B5AD77}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArchiveBot.Core", "ArchiveBot.Core\ArchiveBot.Core.csproj", "{15AA6A1F-0738-4A36-880F-73887759B2F9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{C52F4CD7-B588-479A-89FC-6CE446B5AD77}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C52F4CD7-B588-479A-89FC-6CE446B5AD77}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C52F4CD7-B588-479A-89FC-6CE446B5AD77}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15AA6A1F-0738-4A36-880F-73887759B2F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15AA6A1F-0738-4A36-880F-73887759B2F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15AA6A1F-0738-4A36-880F-73887759B2F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15AA6A1F-0738-4A36-880F-73887759B2F9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

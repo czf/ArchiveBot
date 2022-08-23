@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Czf.Domain.NewsBankWrapper.Interfaces;
 
-namespace ArchiveBot.Objects.NewsBankDependancies
+namespace ArchiveBot.Core.Objects.NewsBankDependancies
 {
     public class EnvironmentVariableEZProxySignInUriProvider : IEZProxySignInUriProvider
     {

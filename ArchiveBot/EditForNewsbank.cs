@@ -13,10 +13,10 @@ using Czf.Domain.NewsBankWrapper.Objects;
 using Czf.Domain.NewsBankWrapper.Enum;
 using System.Threading;
 using System.Threading.Tasks;
-using ArchiveBot.Objects;
+using ArchiveBot.Core.Objects;
 using Czf.Domain.NewsBankWrapper.Interfaces;
-using ArchiveBot.Objects.NewsBankDependancies.ignore;
-using ArchiveBot.Objects.NewsBankDependancies;
+using ArchiveBot.Core.Objects.NewsBankDependancies.ignore;
+using ArchiveBot.Core.Objects.NewsBankDependancies;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Management.Storage.Models;

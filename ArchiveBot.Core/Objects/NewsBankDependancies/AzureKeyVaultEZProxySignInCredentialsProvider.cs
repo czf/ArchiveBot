@@ -8,7 +8,7 @@ using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.Services.AppAuthentication;
 
-namespace ArchiveBot.Objects.NewsBankDependancies
+namespace ArchiveBot.Core.Objects.NewsBankDependancies
 {
     public class AzureKeyVaultEZProxySignInCredentialsProvider : IEZProxySignInCredentialsProvider
     {

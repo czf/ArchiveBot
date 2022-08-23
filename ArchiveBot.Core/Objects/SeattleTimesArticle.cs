@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Net;
 using HtmlAgilityPack;
-namespace ArchiveBot.Objects
+namespace ArchiveBot.Core.Objects
 {
     public class SeattleTimesArticle
     {
