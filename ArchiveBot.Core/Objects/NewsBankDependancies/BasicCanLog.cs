@@ -7,7 +7,7 @@ using Czf.Domain.NewsBankWrapper.Interfaces;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 
-namespace ArchiveBot.Objects.NewsBankDependancies
+namespace ArchiveBot.Core.Objects.NewsBankDependancies
 {
     public class BasicCanLog : ICanLog
     {
