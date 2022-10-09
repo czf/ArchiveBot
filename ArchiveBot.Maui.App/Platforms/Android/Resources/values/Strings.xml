@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+	<string name="app_name">ArchiveBotRunner</string>
+	<string name="notification_text">The started service is running.</string>
+</resources>
