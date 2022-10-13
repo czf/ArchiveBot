@@ -9,6 +9,8 @@
   <ItemGroup>
 	  <PackageReference Include="Azure.Data.Tables" Version="12.6.1" />
 	  <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
+	  <PackageReference Include="Czf.Api.NewsBankWrapper" Version="1.0.2" />
+	  <PackageReference Include="czf.apiwrappers.waybackmachine" Version="2.1.0" />
 	  <PackageReference Include="HtmlAgilityPack" Version="1.11.22" />
 	  <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.5" />
 	  <PackageReference Include="Microsoft.Azure.Management.Storage" Version="25.0.0" />
@@ -16,11 +18,6 @@
 	  <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.2" />
 	  <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
 	  <PackageReference Include="RedditSharp" Version="2.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\czf\csharp_WaybackMachineWrapper\csharp_WaybackMachineWrapper\csharp_WaybackMachineWrapper.csproj" />
-    <ProjectReference Include="..\..\NewsBankWrapper\Czf.Api.NewsBankWrapper\Czf.Api.NewsBankWrapper.csproj" />
   </ItemGroup>
 
 </Project>

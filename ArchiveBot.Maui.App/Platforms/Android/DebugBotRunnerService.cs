@@ -19,7 +19,7 @@ using Application = Android.App.Application;
 namespace ArchiveBot.Maui.App.Platforms.Android
 {
     [Service(Permission = "android.permission.BIND_JOB_SERVICE")]
-    public class BotRunnerService : Service
+    public class DebugBotRunnerService : Service
     {
         bool _disposed;
         bool _isStarted;
@@ -46,14 +46,7 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                 _archiveBot = MauiApplication.Current.Services.GetRequiredService<Core.ArchiveBot>();
                 _editForNewsbank = MauiApplication.Current.Services.GetRequiredService<EditForNewsbank>();
                 _checkBotMail = MauiApplication.Current.Services.GetRequiredService<CheckBotMail>();
-#if !DEBUG
-                //PowerManager powerManager = (PowerManager)GetSystemService(PowerService);
-                //_wakeLock = powerManager.NewWakeLock(WakeLockFlags.Partial,
-                //        "BotRunnerService::WakelockTag");
-                //_wakeLock.Acquire();
-                
-                
-#endif
+
             }
             catch (Exception e)
             {
@@ -125,13 +118,9 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                     var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
 
                     PendingIntent pendingIntent = PendingIntent.GetBroadcast(this,1,
-                        new Intent(this, typeof(ArchiveBotAlarmReceiver)),
+                        new Intent(this, typeof(AlarmReceiver)),
                         PendingIntentFlags.UpdateCurrent);
-                    d.SetInexactRepeating(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(10).ToUnixTimeMilliseconds(), (long)TimeSpan.FromMinutes(10).TotalMilliseconds, pendingIntent);
-                    pendingIntent = PendingIntent.GetBroadcast(this, 1,
-                        new Intent(this, typeof(EditForNewsBankAlarmReceiver)),
-                        PendingIntentFlags.UpdateCurrent);
-                    d.SetInexactRepeating(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMilliseconds(millisecondDelay).ToUnixTimeMilliseconds(), (long)TimeSpan.FromDays(1).TotalMilliseconds, pendingIntent);
+                    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(5).ToUnixTimeMilliseconds(), pendingIntent);
                     _isStarted = true;
                 }
             }
@@ -140,52 +129,29 @@ namespace ArchiveBot.Maui.App.Platforms.Android
         }
 
         [BroadcastReceiver]
-        class ArchiveBotAlarmReceiver : BroadcastReceiver
+        class AlarmReceiver : BroadcastReceiver
         {
-            private readonly Core.ArchiveBot _archiveBot;
-            private readonly ILogger _logger;
-
-            public ArchiveBotAlarmReceiver()
+            private Core.ArchiveBot _archiveBot;
+            private EditForNewsbank _editForNewsbank;
+            public AlarmReceiver()
             {
-                _archiveBot = MauiApplication.Current.Services.GetRequiredService<Core.ArchiveBot>();
-                _logger = MauiApplication.Current.Services.GetRequiredService<ILogger>();
-            }
-
-            public override async void OnReceive(Context context, Intent intent)
-            {
-                try
-                {
-                    await _archiveBot.RunAsync();
-                }
-                catch(Exception ex)
-                {
-                    _logger.LogError(ex, "archivebot error");
-
-                }
-            }
-        }
-        [BroadcastReceiver]
-        class EditForNewsBankAlarmReceiver : BroadcastReceiver
-        {
-            private readonly EditForNewsbank _editForNewsbank;
-            private readonly ILogger _logger;
-            public EditForNewsBankAlarmReceiver()
-            {
+                //_archiveBot = MauiApplication.Current.Services.GetRequiredService<Core.ArchiveBot>();
                 _editForNewsbank = MauiApplication.Current.Services.GetRequiredService<EditForNewsbank>();
-                _logger = MauiApplication.Current.Services.GetRequiredService<ILogger>();
+
             }
 
             public override async void OnReceive(Context context, Intent intent)
             {
                 try
                 {
+                    //await _archiveBot.RunAsync();
                     await _editForNewsbank.RunAsync();
                 }
                 catch(Exception ex)
                 {
-                    _logger.LogError(ex, "editfornewsbank error");
+                    MauiApplication.Current.Services.GetRequiredService<ILogger>().LogError(ex, "receiver error");
 
-                }
+                }                
             }
         }
 
@@ -238,12 +204,12 @@ namespace ArchiveBot.Maui.App.Platforms.Android
             return null;
         }
     }
-    public static class Constants
+    public static class DebugConstants
     {
-        public const string ACTION_START_SERVICE = "ArchiveBot.Service.action.START_SERVICE";
-        public const string ACTION_STOP_SERVICE = "ArchiveBot.Service.action.STOP_SERVICE";
-        public const string ACTION_RESTART_TIMER = "ArchiveBot.Service.action.RESTART_TIMER";
-        public const string ACTION_MAIN_ACTIVITY = "ArchiveBot.Service.action.MAIN_ACTIVITY";
+        public const string ACTION_START_SERVICE = "DebugArchiveBot.Service.action.START_SERVICE";
+        public const string ACTION_STOP_SERVICE =  "DebugArchiveBot.Service.action.STOP_SERVICE";
+        public const string ACTION_RESTART_TIMER = "DebugArchiveBot.Service.action.RESTART_TIMER";
+        public const string ACTION_MAIN_ACTIVITY = "DebugArchiveBot.Service.action.MAIN_ACTIVITY";
         public const int SERVICE_RUNNING_NOTIFICATION_ID = 10000;
     }
     
