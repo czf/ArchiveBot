@@ -21,7 +21,7 @@ namespace ArchiveBot.Core
         {
             ArticleAuthor = seattleTimesArticle.ByLineAuthors.First();
             ArticleHeadline = seattleTimesArticle.Headline;
-            ArticleDate = seattleTimesArticle.PublishDate.Date;
+            ArticleDate = seattleTimesArticle.PublishDate;
             CommentUri = comment?.Permalink?.ToString();
             PartitionKey = comment?.Subreddit;
             RowKey = comment?.Id;
