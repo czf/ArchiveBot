@@ -15,6 +15,7 @@ using WaybackMachineWrapper;
 using static Android.OS.PowerManager;
 using Exception = System.Exception;
 using Application = Android.App.Application;
+using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
 
 namespace ArchiveBot.Maui.App.Platforms.Android
 {
@@ -103,20 +104,11 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                 if (!_isStarted)
                 {
                     RegisterForegroundService();
-
-                    double millisecondDelay = 0;
-                    if (DateTime.Now.Hour < 8)
-                    {
-                        millisecondDelay = DateTime.Now.Date.AddHours(8).Subtract(DateTime.Now).TotalMilliseconds;
-                    }
-                    else
-                    {
-                        millisecondDelay = DateTime.Now.Date.AddDays(1).AddHours(8).Subtract(DateTime.Now).TotalMilliseconds;
-                    }
+                    double millisecondDelay = EditForNewsBankAlarmReceiver.NextEditForNewsbankDelay();
                     //_editForNewsbankFuture = _scheduledThreadPoolExecutor.ScheduleAtFixedRate(_editForNewbankRunnable, (long)millisecondDelay, (long)TimeSpan.FromDays(1).TotalMilliseconds, TimeUnit.Milliseconds);
                     //_archiveBotFuture = _scheduledThreadPoolExecutor.ScheduleWithFixedDelay(_archiveBotRunnable, 0, (long)TimeSpan.FromMinutes(10).TotalMilliseconds, TimeUnit.Milliseconds);
-                    
-                    
+
+
                     //_archiveBotFuture = _scheduledThreadPoolExecutor.Schedule(_tempRunnable, 3000, TimeUnit.Milliseconds);
 
                     //_future = _scheduledThreadPoolExecutor.ScheduleAtFixedRate(_runnable, 3000, 3000, TimeUnit.min);
@@ -124,20 +116,22 @@ namespace ArchiveBot.Maui.App.Platforms.Android
 
                     var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
 
-                    PendingIntent pendingIntent = PendingIntent.GetBroadcast(this,1,
+                    PendingIntent pendingIntent = PendingIntent.GetBroadcast(this, 1,
                         new Intent(this, typeof(ArchiveBotAlarmReceiver)),
                         PendingIntentFlags.UpdateCurrent);
-                    d.SetInexactRepeating(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(5).ToUnixTimeMilliseconds(), (long)TimeSpan.FromMinutes(10).TotalMilliseconds, pendingIntent);
+                    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(5).ToUnixTimeMilliseconds(), pendingIntent);
                     pendingIntent = PendingIntent.GetBroadcast(this, 1,
                         new Intent(this, typeof(EditForNewsBankAlarmReceiver)),
                         PendingIntentFlags.UpdateCurrent);
-                    d.SetInexactRepeating(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMilliseconds(millisecondDelay).ToUnixTimeMilliseconds(), (long)TimeSpan.FromDays(1).TotalMilliseconds, pendingIntent);
+                    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMilliseconds(millisecondDelay).ToUnixTimeMilliseconds(), pendingIntent);
                     _isStarted = true;
                 }
             }
             // This tells Android not to restart the service if it is killed to reclaim resources.
             return StartCommandResult.Sticky;
         }
+
+        
 
         [BroadcastReceiver]
         class ArchiveBotAlarmReceiver : BroadcastReceiver
@@ -161,6 +155,15 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                 {
                     _logger.LogError(ex, "archivebot error");
 
+                }
+                finally
+                {
+                    var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
+
+                    PendingIntent pendingIntent = PendingIntent.GetBroadcast(Application.Context, 1,
+                        new Intent(Application.Context, typeof(ArchiveBotAlarmReceiver)),
+                        PendingIntentFlags.UpdateCurrent);
+                    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeMilliseconds(), pendingIntent);
                 }
             }
         }
@@ -186,6 +189,30 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                     _logger.LogError(ex, "editfornewsbank error");
 
                 }
+                finally
+                {
+                    var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
+
+                    PendingIntent pendingIntent = PendingIntent.GetBroadcast(Application.Context, 1,
+                        new Intent(Application.Context, typeof(EditForNewsBankAlarmReceiver)),
+                        PendingIntentFlags.UpdateCurrent);
+                    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMilliseconds(NextEditForNewsbankDelay()).ToUnixTimeMilliseconds(), pendingIntent);
+                }
+            }
+
+            public static double NextEditForNewsbankDelay()
+            {
+                double millisecondDelay = 0;
+                if (DateTime.Now.Hour < 8)
+                {
+                    millisecondDelay = DateTime.Now.Date.AddHours(8).Subtract(DateTime.Now).TotalMilliseconds;
+                }
+                else
+                {
+                    millisecondDelay = DateTime.Now.Date.AddDays(1).AddHours(8).Subtract(DateTime.Now).TotalMilliseconds;
+                }
+
+                return millisecondDelay;
             }
         }
 
@@ -212,6 +239,7 @@ namespace ArchiveBot.Maui.App.Platforms.Android
             {
                 _logger.LogError(e, "editForNewsbank error");
             }
+            
         }
 
 
