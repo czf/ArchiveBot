@@ -10,10 +10,13 @@ using Czf.Api.NewsBankWrapper;
 using Microsoft.Extensions.Logging;
 using Czf.Domain.NewsBankWrapper.Interfaces;
 using ArchiveBot.Core.Objects;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace ArchiveBot.Maui.App
 {
-    public static class MauiProgram
+    public static partial class MauiProgram
     {
         public static MauiApp CreateMauiApp()
         {
@@ -26,9 +29,16 @@ namespace ArchiveBot.Maui.App
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 })
                 .Services
-                .AddSingleton<BasicLog>()
-                .AddSingleton<ICanLog, BasicLog>()
-                .AddSingleton<ILogger, BasicLog>()
+                .AddSingleton<WebhookBasedLogger>((services) =>
+                {
+                    var c = services.GetRequiredService<IConfiguration>();
+                    var uri = new Uri(c.GetValue<string>("WebhookLoggerUri"));
+                    return new WebhookBasedLogger(uri, services.GetRequiredService<HttpClient>());
+                })
+                .AddSingleton<ICanLog, WebhookBasedLogger>((services) => services.GetRequiredService<WebhookBasedLogger>())
+                .AddSingleton<ILogger, WebhookBasedLogger>((services)=> { 
+                    return services.GetRequiredService<WebhookBasedLogger>(); 
+                })
                 .AddSingleton((services) =>
                 {
                     DeviceCodeCredentialOptions options = new DeviceCodeCredentialOptions()
@@ -39,7 +49,7 @@ namespace ArchiveBot.Maui.App
                         {
                             Dictionary<string, object> uriParams = new() { { "source", info.VerificationUri.AbsoluteUri } };
                             SemaphoreSlim toastSync = new SemaphoreSlim(0, 1);
-                            await Clipboard.Default.SetTextAsync(info.UserCode).ConfigureAwait(false);
+//                            await Clipboard.Default.SetTextAsync(info.UserCode).ConfigureAwait(false);
                             MainThread.BeginInvokeOnMainThread(() =>
                             {
                                 var t = Toast.MakeText(Android.App.Application.Context, info.Message, ToastLength.Long);
@@ -77,75 +87,35 @@ namespace ArchiveBot.Maui.App
                     return new TableServiceClient(new Uri("https://czfapp9632.table.core.windows.net/"), services.GetService<DeviceCodeCredential>());
                 })
                 .AddSingleton<Core.ArchiveBot>()
+#if DEBUG
+                .AddSingleton<DebugBotRunnerService>()
+#else
                 .AddSingleton<BotRunnerService>()
+#endif
                 .AddSingleton<EditForNewsbank>()
                 .AddSingleton<WaybackClient>()
                 .AddSingleton<NewsBankClient>()
                 .AddSingleton<CheckBotMail>()
                 ;
+
                 
-                builder.Services.AddHttpClient<BotRunnerService>((client) =>
-                {
-                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36");
-                    client.DefaultRequestHeaders.Add("Connection", "keep-alive");
-                    client.DefaultRequestHeaders.Accept.ParseAdd("text/html");
-                    client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("identity");
-                    client.BaseAddress = new Uri("https://www.reddit.com/");
-                });
-                
+            builder.Services.AddHttpClient<BotRunnerService>((client) =>
+            {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.102 Safari/537.36");
+                client.DefaultRequestHeaders.Add("Connection", "keep-alive");
+                client.DefaultRequestHeaders.Accept.ParseAdd("text/html");
+                client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("identity");
+                client.BaseAddress = new Uri("https://www.reddit.com/");
+            });
+            ConfigurationBuilder configurationBuilder = new();
+            using var stream = Assembly.GetExecutingAssembly()
+                .GetManifestResourceStream("ArchiveBot.Maui.App.appsettings.json");
+            configurationBuilder.AddJsonStream(stream);
+            builder.Configuration.AddConfiguration(configurationBuilder.Build());
+              
             return builder.Build();
         }
 
-        public class BasicLog : ILogger , ICanLog
-        {
-            public class EmptyDisposable : IDisposable
-            {
-                public void Dispose()
-                {}
-            }
-            public IDisposable BeginScope<TState>(TState state)
-            {
-                return new EmptyDisposable();
-            }
 
-            public bool IsEnabled(LogLevel logLevel)
-            {
-                switch (logLevel)
-                {
-                    case LogLevel.Trace:
-                    case LogLevel.None:
-                        return false;
-                    case LogLevel.Debug:
-                    case LogLevel.Information:
-                    case LogLevel.Warning:
-                    case LogLevel.Error:
-                    case LogLevel.Critical:
-                        return true;
-                    
-                    default:
-                        break;
-                }
-                return false;
-            }
-
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
-            {
-                if (IsEnabled(logLevel) && state is string)
-                {
-
-                    Console.WriteLine(state.ToString());
-                }
-            }
-
-            public void Error(string message)
-            {
-                Console.WriteLine(message);
-            }
-
-            public void Info(string message)
-            {
-                Console.WriteLine(message);
-            }
-        }
     }
 }

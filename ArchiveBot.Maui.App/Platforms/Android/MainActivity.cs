@@ -15,7 +15,11 @@ namespace ArchiveBot.Maui.App
             base.OnPostCreate(savedInstanceState);
             var manager = (NotificationManager)GetSystemService(NotificationService);
             manager.CreateNotificationChannel(new NotificationChannel("foregroundchannel", "Foreground Channel", NotificationImportance.Low));
+#if DEBUG
+            var startServiceIntent = new Intent(this, typeof(DebugBotRunnerService));
+#else
             var startServiceIntent = new Intent(this, typeof(BotRunnerService));
+#endif            
             startServiceIntent.SetAction(Constants.ACTION_START_SERVICE);
 
             StartService(startServiceIntent);

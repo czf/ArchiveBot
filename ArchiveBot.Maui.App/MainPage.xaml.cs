@@ -1,4 +1,6 @@
-﻿using Azure.Security.KeyVault.Secrets;
+﻿using Android.App;
+using Android.Content;
+using Azure.Security.KeyVault.Secrets;
 
 namespace ArchiveBot.Maui.App
 {
@@ -35,7 +37,7 @@ namespace ArchiveBot.Maui.App
                 CounterBtn.Text = $"Clicked {count} time";
             else
                 CounterBtn.Text = $"Clicked {count} times";
-
+            var d =(AlarmManager)Android.App.Application.Context.GetSystemService(Context.AlarmService);
             SemanticScreenReader.Announce(CounterBtn.Text);
         }
         

@@ -306,3 +306,4 @@ ArchiveBot/local.settings.json
 *Web Deploy.pubxml
 *Web Deploy.pubxml.user
 ArchiveBot/Objects/NewsBankDependancies/ignore/CredProvider.cs
+/ArchiveBot.Maui.App/appsettings.json
