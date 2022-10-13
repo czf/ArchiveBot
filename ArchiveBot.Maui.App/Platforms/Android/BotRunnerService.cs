@@ -127,7 +127,7 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                     PendingIntent pendingIntent = PendingIntent.GetBroadcast(this,1,
                         new Intent(this, typeof(ArchiveBotAlarmReceiver)),
                         PendingIntentFlags.UpdateCurrent);
-                    d.SetInexactRepeating(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(10).ToUnixTimeMilliseconds(), (long)TimeSpan.FromMinutes(10).TotalMilliseconds, pendingIntent);
+                    d.SetInexactRepeating(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(5).ToUnixTimeMilliseconds(), (long)TimeSpan.FromMinutes(10).TotalMilliseconds, pendingIntent);
                     pendingIntent = PendingIntent.GetBroadcast(this, 1,
                         new Intent(this, typeof(EditForNewsBankAlarmReceiver)),
                         PendingIntentFlags.UpdateCurrent);

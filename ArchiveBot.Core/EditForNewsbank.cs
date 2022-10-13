@@ -234,6 +234,7 @@ namespace ArchiveBot.Core
             SearchResult searchResult = null;
             try
             {
+                var localDate = TimeZoneInfo.ConvertTimeFromUtc(articlePost.ArticleDate, TimeZoneInfo.Local).ToShortDateString();
                 searchResult = await _newsBankClient.Search(
                         new SearchRequest()
                         {
@@ -241,7 +242,7 @@ namespace ArchiveBot.Core
                             Publications = new List<Publication>() { Publication.SeattleTimesWebEditionArticles },
                             SearchParameter0 = new SearchParameter() { Field = SearchField.Author, Value = articlePost.ArticleAuthor?.Replace("/",string.Empty) },
                             SearchParameter1 = new SearchParameter() { Field = SearchField.Headline, Value = $"\"{articlePost.ArticleHeadline}\"", ParameterCompoundOperator = CompoundOperator.AND },
-                            SearchParameter2 = new SearchParameter() { Field = SearchField.Date, Value = articlePost.ArticleDate.ToShortDateString(), ParameterCompoundOperator = CompoundOperator.AND }
+                            SearchParameter2 = new SearchParameter() { Field = SearchField.Date, Value = localDate, ParameterCompoundOperator = CompoundOperator.AND }
                         });
             }
             catch (NullReferenceException nullRefEx)  //not the best option.
@@ -253,7 +254,7 @@ namespace ArchiveBot.Core
             }
             catch(Exception e)
             {
-                _log.LogError(e.Message);
+                _log.LogError(e,"newsbank search error");
                 throw;
             }
             return $"[NewsBank version]({searchResult.FirstSearchResultItem.ResultItemUri}) via SPL [^(SPL) ^(account) ^(required)](https://www.spl.org/using-the-library/get-started/get-started-with-a-library-card/library-card-application)";
@@ -262,7 +263,7 @@ namespace ArchiveBot.Core
         private async Task<bool> TryUpdateArticleData(ArticlePost articlePost, Reddit r, TableClient articleTableClient)
         {
             bool result = false;
-            Comment comment = await r.GetCommentAsync(new Uri("https://www.reddit.com" + articlePost.CommentUri));
+            Comment comment = await r.GetCommentAsync(new Uri("https://oauth.reddit.com" + articlePost.CommentUri));
             Post post = (Post)comment.Parent;
 
             string articleUrl = post.Url.GetComponents(UriComponents.Host | UriComponents.Path | UriComponents.Scheme, UriFormat.SafeUnescaped);
