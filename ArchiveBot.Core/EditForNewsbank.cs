@@ -185,9 +185,8 @@ namespace ArchiveBot.Core
                 _log.LogInformation("saving token");
             }
 
-            List<Task> updateCommentTasks = new List<Task>();
             //<Azure.Page<ArticlePost>, IAsyncEnumerableArticlePost>
-            
+            int count = 0;
             await foreach (ArticlePost ap in articlesPublishedBeforeToday)
             {
                 Task updateComment = GetCommentLine(ap)
@@ -219,11 +218,10 @@ namespace ArchiveBot.Core
                     }
                     ,TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
 
-                updateCommentTasks.Add(updateComment);
+                await updateComment.ConfigureAwait(false);//one at a time due to rate issue
+                count++;
             }
-                        
-            await Task.WhenAll(updateCommentTasks.ToArray()).ConfigureAwait(false);
-            _log.LogInformation("AwaitWhenALL " + updateCommentTasks.Count.ToString());
+            _log.LogInformation($"edited {count} comments");
         }
 
 
@@ -298,8 +296,7 @@ namespace ArchiveBot.Core
             {
                 throw new ArgumentNullException(nameof(comment));
             }
-            await comment.EditTextAsync(comment.Body.Replace(":0:", commentLine));//[NewsBank version via SPL]({""})^[SPL account required]()
-            await comment.SaveAsync();
+            await comment.EditTextAsync(comment.Body.Replace("&#65279;&#xFEFF;", commentLine).Replace(":0:", commentLine));//[NewsBank version via SPL]({""})^[SPL account required]()
         }
     }
 }
