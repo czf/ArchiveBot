@@ -52,15 +52,15 @@ namespace ArchiveBot.Core
                 switch (new Random().Next(3))
                 {
                     case 0:
-                        result = "[Yay!](https://www.youtube.com/watch?v=Y42F9lyIyp4)";
+                        result = "[Thanks!](https://ak.picdn.net/shutterstock/videos/1056322661/preview/stock-footage-futuristic-prototype-robot-finishing-presentation-in-meeting-room-excited-audience-of-office.webm)";
                         break;
                     case 1:
-                        result = "[aww yeah](https://www.youtube.com/watch?v=r3J5XfnjvwY)"; 
+                        result = "[aww yeah](https://www.youtube.com/watch?v=r3J5XfnjvwY)"; //  aww yeah
                         break;
                     case 2:
                         result = "[nice](https://www.youtube.com/watch?v=Vv_3gcLhE9w)";
                         break;
-                        //https://www.youtube.com/watch?v=r3J5XfnjvwY  aww yeah
+                        //https://ak.picdn.net/shutterstock/videos/1036047215/preview/stock-footage-young-woman-and-droid-dance-together-cyborg-and-human-concept.webm robot dance
                         //https://gfycat.com/ifr/WeepyPresentCub blushing robot
                         //https://gfycat.com/ifr/DimwittedFavorableKillerwhale robot hug
                 }
