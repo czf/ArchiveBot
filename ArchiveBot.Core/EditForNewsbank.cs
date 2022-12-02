@@ -90,8 +90,8 @@ namespace ArchiveBot.Core
             }
 
             var articleTableClient = _tableServiceClient.GetTableClient("article");
-            
-            DateTime today = new DateTime(DateTime.Today.Ticks, DateTimeKind.Utc);
+            DateTimeOffset todayLocal = DateTimeOffset.Now.Date;
+            DateTime today = todayLocal.ToUniversalTime().DateTime;
             AsyncPageable<ArticlePost> articlesPublishedBeforeToday = articleTableClient.QueryAsync<ArticlePost>(x => x.ArticleDate < today && x.ArticleDate > today.AddDays(-27));
 
 
