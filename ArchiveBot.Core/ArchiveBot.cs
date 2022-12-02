@@ -296,7 +296,7 @@ namespace ArchiveBot.Core
                             string msg =
                 $@"[Archive.org version.]({archivedUrl.ToString()})
 
-&#65279;&#xFEFF;
+:0:
 
 ----
 ^^You ^^can ^^support ^^Archive.org ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/94-3242767)  
