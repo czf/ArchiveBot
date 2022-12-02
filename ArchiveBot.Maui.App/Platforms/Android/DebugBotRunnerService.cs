@@ -97,23 +97,6 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                 {
                     RegisterForegroundService();
 
-                    double millisecondDelay = 0;
-                    if (DateTime.Now.Hour < 8)
-                    {
-                        millisecondDelay = DateTime.Now.Date.AddHours(8).Subtract(DateTime.Now).TotalMilliseconds;
-                    }
-                    else
-                    {
-                        millisecondDelay = DateTime.Now.Date.AddDays(1).AddHours(8).Subtract(DateTime.Now).TotalMilliseconds;
-                    }
-                    //_editForNewsbankFuture = _scheduledThreadPoolExecutor.ScheduleAtFixedRate(_editForNewbankRunnable, (long)millisecondDelay, (long)TimeSpan.FromDays(1).TotalMilliseconds, TimeUnit.Milliseconds);
-                    //_archiveBotFuture = _scheduledThreadPoolExecutor.ScheduleWithFixedDelay(_archiveBotRunnable, 0, (long)TimeSpan.FromMinutes(10).TotalMilliseconds, TimeUnit.Milliseconds);
-                    
-                    
-                    //_archiveBotFuture = _scheduledThreadPoolExecutor.Schedule(_tempRunnable, 3000, TimeUnit.Milliseconds);
-
-                    //_future = _scheduledThreadPoolExecutor.ScheduleAtFixedRate(_runnable, 3000, 3000, TimeUnit.min);
-
 
                     var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
 
