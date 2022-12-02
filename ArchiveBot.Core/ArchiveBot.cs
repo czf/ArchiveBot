@@ -277,19 +277,19 @@ namespace ArchiveBot.Core
                                         validationAttempts--;
                                         try
                                         {
-                                        using (HttpResponseMessage responseCheck = await _httpClient.GetAsync(archivedUrl))
-                                        {
-                                            if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                                            using (HttpResponseMessage responseCheck = await _httpClient.GetAsync(archivedUrl))
                                             {
-                                                _log.LogWarning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
-                                                Thread.Sleep(100);
+                                                if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
+                                                {
+                                                    _log.LogWarning($"404 returned from archive.org using provided response url. \nstatuscode:{responseCheck.StatusCode}  \narchiveURL:{archivedUrl}");
+                                                    Thread.Sleep(100);
+                                                }
+                                                else
+                                                {
+                                                    _log.LogInformation("check returned success.");
+                                                    success = true;
+                                                }
                                             }
-                                            else
-                                            {
-                                                _log.LogInformation("check returned success.");
-                                                success = true;
-                                            }
-                                        }
                                         }
                                         catch(Exception validationException)
                                         {
