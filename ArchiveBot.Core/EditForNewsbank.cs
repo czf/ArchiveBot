@@ -239,7 +239,7 @@ namespace ArchiveBot.Core
                             Product = Product.WorldNews,
                             Publications = new List<Publication>() { Publication.SeattleTimesWebEditionArticles },
                             SearchParameter0 = new SearchParameter() { Field = SearchField.Author, Value = articlePost.ArticleAuthor?.Replace("/",string.Empty) },
-                            SearchParameter1 = new SearchParameter() { Field = SearchField.Headline, Value = $"\"{articlePost.ArticleHeadline}\"", ParameterCompoundOperator = CompoundOperator.AND },
+                            SearchParameter1 = new SearchParameter() { Field = SearchField.Headline, Value = $"\"{(articlePost.ArticleHeadline??string.Empty).Replace("?",string.Empty)}\"", ParameterCompoundOperator = CompoundOperator.AND },
                             SearchParameter2 = new SearchParameter() { Field = SearchField.Date, Value = localDate, ParameterCompoundOperator = CompoundOperator.AND }
                         });
             }
