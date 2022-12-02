@@ -22,18 +22,9 @@ namespace ArchiveBot.Maui.App.Platforms.Android
     [Service(Permission = "android.permission.BIND_JOB_SERVICE")]
     public class BotRunnerService : Service
     {
-        bool _disposed;
         bool _isStarted;
-        Runnable _archiveBotRunnable;
-        Runnable _editForNewbankRunnable;
-        private Runnable _tempRunnable;
-        private Runnable _tempRunnable2;
-        private ScheduledThreadPoolExecutor _scheduledThreadPoolExecutor;
-        private IScheduledFuture _archiveBotFuture;
-        private Core.ArchiveBot _archiveBot;
-        private IScheduledFuture _editForNewsbankFuture;
-        private EditForNewsbank _editForNewsbank;
-        private CheckBotMail _checkBotMail;
+
+
         private ILogger _logger;
         private WakeLock _wakeLock;
 
@@ -44,9 +35,6 @@ namespace ArchiveBot.Maui.App.Platforms.Android
             try
             {
                 _logger = MauiApplication.Current.Services.GetRequiredService<ILogger>();
-                _archiveBot = MauiApplication.Current.Services.GetRequiredService<Core.ArchiveBot>();
-                _editForNewsbank = MauiApplication.Current.Services.GetRequiredService<EditForNewsbank>();
-                _checkBotMail = MauiApplication.Current.Services.GetRequiredService<CheckBotMail>();
 #if !DEBUG
                 //PowerManager powerManager = (PowerManager)GetSystemService(PowerService);
                 //_wakeLock = powerManager.NewWakeLock(WakeLockFlags.Partial,
@@ -62,39 +50,14 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                 _logger.LogError(e, "error during OnCreate");
                 throw;
             }
-           
-            _archiveBotRunnable = new Runnable(ExecuteArchiveBot);
-            _editForNewbankRunnable = new Runnable(ExecuteEditForNewsbank);
-
-            //_tempRunnable = new Runnable(ExecuteEditForNewsbank);
-            
-
-            _scheduledThreadPoolExecutor = new ScheduledThreadPoolExecutor(1);
         }
 
         public override void OnDestroy()
         {
             base.OnDestroy();
-            _scheduledThreadPoolExecutor.ShutdownNow();
+            _logger.LogWarning("OnDestory Called");
         }
 
-        protected override void Dispose(bool disposing)
-        {
-            base.Dispose(disposing);
-            if (_disposed)
-            {
-                return;
-            }
-            if (disposing)
-            {
-                _scheduledThreadPoolExecutor.Dispose();
-                _archiveBotFuture.Dispose();
-                _archiveBotRunnable.Dispose();
-                _editForNewbankRunnable.Dispose();
-                _editForNewsbankFuture.Dispose();
-            }
-            _disposed = true;
-        }
 
         public override StartCommandResult OnStartCommand(Intent intent, StartCommandFlags flags, int startId)
         {
@@ -105,15 +68,6 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                 {
                     RegisterForegroundService();
                     double millisecondDelay = EditForNewsBankAlarmReceiver.NextEditForNewsbankDelay();
-                    //_editForNewsbankFuture = _scheduledThreadPoolExecutor.ScheduleAtFixedRate(_editForNewbankRunnable, (long)millisecondDelay, (long)TimeSpan.FromDays(1).TotalMilliseconds, TimeUnit.Milliseconds);
-                    //_archiveBotFuture = _scheduledThreadPoolExecutor.ScheduleWithFixedDelay(_archiveBotRunnable, 0, (long)TimeSpan.FromMinutes(10).TotalMilliseconds, TimeUnit.Milliseconds);
-
-
-                    //_archiveBotFuture = _scheduledThreadPoolExecutor.Schedule(_tempRunnable, 3000, TimeUnit.Milliseconds);
-
-                    //_future = _scheduledThreadPoolExecutor.ScheduleAtFixedRate(_runnable, 3000, 3000, TimeUnit.min);
-
-
                     var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
 
                     PendingIntent pendingIntent = PendingIntent.GetBroadcast(this, 1,
@@ -180,14 +134,15 @@ namespace ArchiveBot.Maui.App.Platforms.Android
 
             public override async void OnReceive(Context context, Intent intent)
             {
+                bool success = true;
                 try
                 {
                     await _editForNewsbank.RunAsync();
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     _logger.LogError(ex, "editfornewsbank error");
-
+                    success = false;
                 }
                 finally
                 {
@@ -196,7 +151,14 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                     PendingIntent pendingIntent = PendingIntent.GetBroadcast(Application.Context, 1,
                         new Intent(Application.Context, typeof(EditForNewsBankAlarmReceiver)),
                         PendingIntentFlags.UpdateCurrent);
-                    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMilliseconds(NextEditForNewsbankDelay()).ToUnixTimeMilliseconds(), pendingIntent);
+                    if (success)
+                    {
+                        d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMilliseconds(NextEditForNewsbankDelay()).ToUnixTimeMilliseconds(), pendingIntent);
+                    }
+                    else
+                    {
+                        d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddMilliseconds(TimeSpan.FromMinutes(5).TotalMilliseconds).ToUnixTimeMilliseconds(), pendingIntent);
+                    }
                 }
             }
 
@@ -215,33 +177,6 @@ namespace ArchiveBot.Maui.App.Platforms.Android
                 return millisecondDelay;
             }
         }
-
-        private async void ExecuteArchiveBot()
-        {
-            try
-            {
-                await _archiveBot.RunAsync();
-            }
-            catch(Exception e)
-            {
-                _logger.LogError(e, "archivebot error");
-            }
-        }
-
-        private async void ExecuteEditForNewsbank()
-        {
-            try
-            {
-                _logger.LogInformation("Call EditForNewsBank.RunAsync");
-                await _editForNewsbank.RunAsync();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "editForNewsbank error");
-            }
-            
-        }
-
 
         void RegisterForegroundService()
         {
