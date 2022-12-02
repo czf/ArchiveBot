@@ -201,7 +201,7 @@ namespace ArchiveBot.Core
             bool allPostsSuccess = true;
             using (WaybackClient waybackMachine = new WaybackClient())
             {
-                await foreach (Post p in posts.TakeWhile(x => !x.IsHidden))
+                await foreach (Post p in posts.Where(x => !x.IsHidden))
                 {
                     allPostsSuccess &= await ProcessPost(p, articleTableClient);
                 }
