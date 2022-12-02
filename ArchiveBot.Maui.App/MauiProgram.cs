@@ -41,12 +41,15 @@ namespace ArchiveBot.Maui.App
                 })
                 .AddSingleton((services) =>
                 {
+                    var logger = services.GetRequiredService<ILogger>();
                     DeviceCodeCredentialOptions options = new DeviceCodeCredentialOptions()
                     {
                         TenantId = "4e72a007-c1d8-4b0f-8fb6-5137abe83221",
                         ClientId = "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+                        
                         DeviceCodeCallback = async (info, cToken) =>
                         {
+                            logger.LogInformation("DeviceCodeCallback, sign in needed.");
                             Dictionary<string, object> uriParams = new() { { "source", info.VerificationUri.AbsoluteUri } };
                             SemaphoreSlim toastSync = new SemaphoreSlim(0, 1);
 //                            await Clipboard.Default.SetTextAsync(info.UserCode).ConfigureAwait(false);
