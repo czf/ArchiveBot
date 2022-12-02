@@ -257,6 +257,10 @@ namespace ArchiveBot.Core
                             do
                             {
                                 attempts--;
+                                if (attempts < 2)
+                                {
+                                    Thread.Sleep(5000);
+                                }
                                 if (availableResponse?.archived_snapshots?.closest?.available == true)
                                 {
                                     archivedUrl = availableResponse.archived_snapshots.closest.url;
@@ -271,6 +275,8 @@ namespace ArchiveBot.Core
                                     do
                                     {
                                         validationAttempts--;
+                                        try
+                                        {
                                         using (HttpResponseMessage responseCheck = await _httpClient.GetAsync(archivedUrl))
                                         {
                                             if (!responseCheck.IsSuccessStatusCode || responseCheck.StatusCode == HttpStatusCode.NotFound)
@@ -283,6 +289,11 @@ namespace ArchiveBot.Core
                                                 _log.LogInformation("check returned success.");
                                                 success = true;
                                             }
+                                        }
+                                        }
+                                        catch(Exception validationException)
+                                        {
+                                            _log.LogError(validationException, $"archivedUrl: {archivedUrl}");
                                         }
                                     } while (validationAttempts > 0 && !success);
                                 }
@@ -385,6 +396,10 @@ namespace ArchiveBot.Core
             {
                 _log.LogError("", e);
                 successProcessPost = false;
+            }
+            if(!successProcessPost && !Debug)
+            {
+                await p.UnhideAsync();
             }
             return successProcessPost;
         }
