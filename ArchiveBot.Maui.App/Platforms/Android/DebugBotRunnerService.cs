@@ -93,19 +93,19 @@ namespace ArchiveBot.Maui.App.Platforms.Android
             base.OnStartCommand(intent, flags, startId);
             if (intent.Action.Equals(Constants.ACTION_START_SERVICE))
             {
-                if (!_isStarted)
-                {
-                    RegisterForegroundService();
+                //if (!_isStarted)
+                //{
+                //    RegisterForegroundService();
 
 
-                    var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
+                //    var d = (AlarmManager)Application.Context.GetSystemService(Context.AlarmService);
 
-                    PendingIntent pendingIntent = PendingIntent.GetBroadcast(this,1,
-                        new Intent(this, typeof(AlarmReceiver)),
-                        PendingIntentFlags.UpdateCurrent);
-                    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(5).ToUnixTimeMilliseconds(), pendingIntent);
-                    _isStarted = true;
-                }
+                //    PendingIntent pendingIntent = PendingIntent.GetBroadcast(this,1,
+                //        new Intent(this, typeof(AlarmReceiver)),
+                //        PendingIntentFlags.UpdateCurrent);
+                //    d.SetAndAllowWhileIdle(AlarmType.Rtc, DateTimeOffset.UtcNow.AddSeconds(5).ToUnixTimeMilliseconds(), pendingIntent);
+                //    _isStarted = true;
+                //}
             }
             // This tells Android not to restart the service if it is killed to reclaim resources.
             return StartCommandResult.Sticky;
