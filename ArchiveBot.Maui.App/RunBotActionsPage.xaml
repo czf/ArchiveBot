@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ArchiveBot.Maui.App.RunBotActionsPage"
+             Title="RunBotActionsPage">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Style TargetType="Button">
+                <Setter Property="Margin"
+                        Value="0,100,0,10" 
+                        />
+                <Setter Property="VerticalOptions"
+                        Value="Center"
+                        />
+                <Setter Property="HeightRequest"
+                        Value="75" 
+                        />
+                <Setter Property="BackgroundColor"
+                        Value="CornflowerBlue"/>
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    <VerticalStackLayout>
+        <Label 
+            Text="Here you can execute the bot actions"
+            VerticalOptions="Center" 
+            HorizontalOptions="Center"
+            Margin="0,10,0,10"/>
+
+        <Button
+            x:Name="ExecuteArchiveBot"
+            Text="Execute ArchiveBot"
+            VerticalOptions="Center"
+            Clicked="ExecuteArchiveBot_Clicked"
+           />
+        <Button
+            x:Name="ExecuteNewsbank"
+            Text="Execute Newsbank Update"
+            VerticalOptions="Center"
+            Clicked="ExecuteNewsbank_Clicked" 
+            />
+
+        <Button
+            x:Name="populateeditor"
+            Text="populateeditor"
+            VerticalOptions="Center"
+            Clicked="populateeditor_Clicked" 
+            />
+
+        <Editor
+            x:Name="BotActionResultEditor"
+            BackgroundColor="Pink"
+            AutoSize="TextChanges"
+            IsEnabled="False"
+           />
+        
+    </VerticalStackLayout>
+</ContentPage>

@@ -13,7 +13,7 @@ namespace ArchiveBot.Maui.App
         {
             //_secretClient = secretClient;
             InitializeComponent();
-
+            Routing.RegisterRoute("AzureAuthPage", typeof(AzureAuthPage));
         }
 
 
@@ -40,6 +40,10 @@ namespace ArchiveBot.Maui.App
             var d =(AlarmManager)Android.App.Application.Context.GetSystemService(Context.AlarmService);
             SemanticScreenReader.Announce(CounterBtn.Text);
         }
-        
+
+        private void aSwitch_Toggled(object sender, ToggledEventArgs e)
+        {
+
+        }
     }
 }

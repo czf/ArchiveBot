@@ -76,7 +76,9 @@ namespace ArchiveBot.Maui.App
                     DeviceCodeCredential c = new DeviceCodeCredential(options);
                     return c;
                 })
+                .AddSingleton<AppShell>()
                 .AddSingleton<MainPage>()
+                .AddSingleton<RunBotActionsPage>()
                 .AddSingleton<IEZProxySignInCredentialsProvider, SecretClientEZProxySignInCredentialProvider>()
                 .AddSingleton<IEZProxySignInUriProvider, SecretClientEZProxySignInUriProvider>()
                 .AddSingleton<IBotParameterCredentialsProvider, SecretClientBotParameterCredentialsProvider>()

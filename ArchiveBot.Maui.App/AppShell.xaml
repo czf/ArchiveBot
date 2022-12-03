@@ -5,9 +5,34 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:ArchiveBot.Maui.App"
     Shell.FlyoutBehavior="Disabled">
-
+    <Shell.Resources>
+        <ResourceDictionary>
+            <Style TargetType="TabBar">
+                
+                <Setter Property="Shell.TabBarBackgroundColor"
+            Value="CornflowerBlue" />
+                <Setter Property="Shell.TabBarTitleColor"
+            Value="Black" />
+                <Setter Property="Shell.TabBarUnselectedColor"
+            Value="AntiqueWhite" />
+            </Style>
+        </ResourceDictionary>
+    </Shell.Resources>
+    <TabBar >
+        <Tab Title="Home">
     <ShellContent
         Title="Home"
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
+        </Tab>
+        <Tab 
+            Title="Run Bot Actions"
+             >
+            <ShellContent
+        Title="Run Bot Actions"
+        ContentTemplate="{DataTemplate local:RunBotActionsPage}"
+        Route="RunBotActionsPage" />
+        </Tab>
+    </TabBar>
+
 </Shell>
