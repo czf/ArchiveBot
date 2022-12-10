@@ -1,5 +1,7 @@
 using ArchiveBot.Core;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System.Web;
 
 namespace ArchiveBot.Maui.App;
 
@@ -8,7 +10,7 @@ public partial class RunBotActionsPage : ContentPage
     private readonly Core.ArchiveBot _archiveBot;
     private readonly EditForNewsbank _editForNewsbank;
     private readonly ILogger _logger;
-    private string _actionResult;
+    
     public RunBotActionsPage(
         Core.ArchiveBot archiveBot,
         EditForNewsbank editForNewsbank,
@@ -18,20 +20,24 @@ public partial class RunBotActionsPage : ContentPage
         _archiveBot = archiveBot;
         _editForNewsbank = editForNewsbank;
         _logger = logger;
+        ExceptionDisplay.IsVisible = false;
+        clearExceptionDisplay.IsVisible = false;
+#if !DEBUG
+        populateeditor.IsVisible = false;
+#endif
 
     }
 
     private async void ExecuteArchiveBot_Clicked(object sender, EventArgs e)
     {
         try
-        {
-            BotActionResultEditor.Text = string.Empty;
+        {   
             await _archiveBot.RunAsync().ConfigureAwait(false);
         }
         catch (Exception exception) 
         {
             _logger.LogError(exception, "archivebot error");
-            BotActionResultEditor.Text = "archivebot error \n\n" + exception.ToString();
+            PopulateExceptionDisplay(exception);
         }
 
     }
@@ -40,14 +46,12 @@ public partial class RunBotActionsPage : ContentPage
     {
         try
         {
-            BotActionResultEditor.Text = string.Empty;
             await _editForNewsbank.RunAsync().ConfigureAwait(false);
         }
         catch (Exception exception) 
         {
             _logger.LogError(exception, "editfornewsbank error");
-            BotActionResultEditor.Text = "editfornewbank error \n\n" + exception.ToString();
-
+            PopulateExceptionDisplay(exception);
         }
 
     }
@@ -56,15 +60,25 @@ public partial class RunBotActionsPage : ContentPage
     {
         try
         {
-            BotActionResultEditor.Text = string.Empty;
-
             throw new Exception("some kind of exception");
         }
         catch(Exception exception)
         {
-            BotActionResultEditor.Text = "asdfasdfsafadfdsafds error \n\n" + exception.ToString();
-
+            PopulateExceptionDisplay(exception);
         }
+    }
 
+    private void clearExceptionDisplay_Clicked(object sender, EventArgs e)
+    {
+        ExceptionDisplay.EvaluateJavaScriptAsync($"populateException(\"\")");
+        ExceptionDisplay.IsVisible = false;
+    }
+
+    private void PopulateExceptionDisplay(Exception exception)
+    {
+        var exceptionString = HttpUtility.JavaScriptStringEncode(JsonConvert.SerializeObject(exception, Formatting.Indented));
+        clearExceptionDisplay.IsVisible= true;
+        ExceptionDisplay.EvaluateJavaScriptAsync($"populateException(\"{exceptionString}\")");
+        ExceptionDisplay.IsVisible = true;
     }
 }
