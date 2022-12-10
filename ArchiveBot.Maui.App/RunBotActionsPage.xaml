@@ -20,39 +20,69 @@
             </Style>
         </ResourceDictionary>
     </ContentPage.Resources>
-    <VerticalStackLayout>
-        <Label 
-            Text="Here you can execute the bot actions"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center"
-            Margin="0,10,0,10"/>
+    <ScrollView >
+        <VerticalStackLayout>
+            <Label 
+                Text="Here you can execute the bot actions"
+                VerticalOptions="Center" 
+                HorizontalOptions="Center"
+                Margin="0,10,0,10"/>
 
-        <Button
-            x:Name="ExecuteArchiveBot"
-            Text="Execute ArchiveBot"
-            VerticalOptions="Center"
-            Clicked="ExecuteArchiveBot_Clicked"
-           />
-        <Button
-            x:Name="ExecuteNewsbank"
-            Text="Execute Newsbank Update"
-            VerticalOptions="Center"
-            Clicked="ExecuteNewsbank_Clicked" 
-            />
+            <Button
+                x:Name="ExecuteArchiveBot"
+                Text="Execute ArchiveBot"
+                VerticalOptions="Center"
+                Clicked="ExecuteArchiveBot_Clicked"
+               />
+            <Button
+                x:Name="ExecuteNewsbank"
+                Text="Execute Newsbank Update"
+                VerticalOptions="Center"
+                Clicked="ExecuteNewsbank_Clicked" 
+                />
 
-        <Button
-            x:Name="populateeditor"
-            Text="populateeditor"
-            VerticalOptions="Center"
-            Clicked="populateeditor_Clicked" 
-            />
+            <Button
+                x:Name="populateeditor"
+                Text="populateeditor"
+                VerticalOptions="Center"
+                Clicked="populateeditor_Clicked" 
+                />
 
-        <Editor
-            x:Name="BotActionResultEditor"
-            BackgroundColor="Pink"
-            AutoSize="TextChanges"
-            IsEnabled="False"
-           />
-        
-    </VerticalStackLayout>
+            <Button
+                x:Name="clearExceptionDisplay"
+                Text="Clear Exception Display"
+                VerticalOptions="Center"
+                Clicked="clearExceptionDisplay_Clicked" 
+                />
+            <ScrollView MaximumHeightRequest="200" HorizontalScrollBarVisibility="Always">
+                <WebView x:Name="ExceptionDisplay" >
+                    <WebView.Source>
+                        <HtmlWebViewSource>
+                            <HtmlWebViewSource.Html >
+                                <![CDATA[
+                            <html>
+                                <head>
+                                <script type="application/javascript">
+                                function populateException(json){
+                                
+                                
+                                document.getElementById("exception").innerText = json;
+                               
+                                }
+                                </script>
+                                </head>
+                                <body 
+                                style="background-color:pink">
+                        <div id="exception">
+                        </div>
+                        </body>
+                            </html>
+                            ]]>
+                            </HtmlWebViewSource.Html>
+                        </HtmlWebViewSource>
+                    </WebView.Source>
+                </WebView>
+            </ScrollView>
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
