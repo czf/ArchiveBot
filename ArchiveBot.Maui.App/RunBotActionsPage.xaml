@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:model="clr-namespace:ArchiveBot.Maui.App.Models"
+             xmlns:local="clr-namespace:ArchiveBot.Maui.App"
+             
+             x:DataType="model:RunBotActionsViewModel"
              x:Class="ArchiveBot.Maui.App.RunBotActionsPage"
-             Title="RunBotActionsPage">
+             Title="RunBotActionsPage"
+             >
+    <!--xmlns:local="clr-namespace:ArchiveBot.Maui.App"-->
     <ContentPage.Resources>
         <ResourceDictionary>
             <Style TargetType="Button">
@@ -20,8 +26,18 @@
             </Style>
         </ResourceDictionary>
     </ContentPage.Resources>
+    
     <ScrollView >
         <VerticalStackLayout>
+
+            <!--<Label   
+                x:Name="testlabel"
+                VerticalOptions="Center" 
+                HorizontalOptions="Center"
+                Margin="0,100,0,10"
+                Text="{x:Binding testprop}"/>-->
+               
+            
             <Label 
                 Text="Here you can execute the bot actions"
                 VerticalOptions="Center" 
@@ -32,29 +48,40 @@
                 x:Name="ExecuteArchiveBot"
                 Text="Execute ArchiveBot"
                 VerticalOptions="Center"
-                Clicked="ExecuteArchiveBot_Clicked"
+                Command="{x:Binding ExecuteArchiveBotCommand}"
+                CommandParameter="{x:Binding Source={x:Reference ExceptionDisplay}}"
                />
             <Button
                 x:Name="ExecuteNewsbank"
                 Text="Execute Newsbank Update"
                 VerticalOptions="Center"
-                Clicked="ExecuteNewsbank_Clicked" 
+                Command="{x:Binding ExecuteNewsbankCommand}"
+                CommandParameter="{x:Binding Source={x:Reference ExceptionDisplay}}"
                 />
+
+      
 
             <Button
                 x:Name="populateeditor"
                 Text="populateeditor"
                 VerticalOptions="Center"
-                Clicked="populateeditor_Clicked" 
+                Command="{Binding ForceExceptionCommand}"
+                CommandParameter="{x:Binding Source={x:Reference ExceptionDisplay}}"
                 />
-
+            
+            <!--Clicked="clearExceptionDisplay_Clicked"-->
             <Button
                 x:Name="clearExceptionDisplay"
                 Text="Clear Exception Display"
                 VerticalOptions="Center"
-                Clicked="clearExceptionDisplay_Clicked" 
+                
+                Command="{Binding ClearExceptionCommand}"
+                IsVisible="{Binding ShowExceptionStuff}"
                 />
-            <ScrollView MaximumHeightRequest="200" HorizontalScrollBarVisibility="Always">
+            <ScrollView MaximumHeightRequest="200" 
+                        IsVisible="{Binding ShowExceptionStuff}"
+                        
+                       >
                 <WebView x:Name="ExceptionDisplay" >
                     <WebView.Source>
                         <HtmlWebViewSource>
