@@ -3,19 +3,34 @@
 
 name: .NET
 
-on: workflow_dispatch
+on:
+  schedule:
+    - cron: '27 7 * * 1'
 
 jobs:
-  build:
+  WaInitiatives_Run:
+    name: Run WaInitiatives App
     runs-on: ubuntu-latest
-
+    environment: WaInitiatives
     steps:
     - uses: actions/checkout@v3
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 7.0.x
-    - name: temp
-      run: ls
+    - name: Restore dependencies
       working-directory: ./Czf.Wa.Initiatives.App
+      run: dotnet restore
+    - name: Build
+      working-directory: ./Czf.Wa.Initiatives.App
+      run: dotnet build --no-restore
+    - name: Run
+      env:
+        user: ${{secrets.user}}
+        pass: ${{secrets.pass}}
+        clientId: ${{secrets.clientId}}
+        secret: ${{secrets.secret}}
+      working-directory: ./Czf.Wa.Initiatives.App
+      run: dotnet run --no-build --verbosity normal
     
+
