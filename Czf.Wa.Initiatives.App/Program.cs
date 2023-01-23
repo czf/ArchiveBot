@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RedditSharp;
+using RedditSharp.Things;
 using System.Net;
 using System.Security.Authentication;
 using System.Text;
@@ -78,6 +79,7 @@ public partial class Program
     const string TABLE_ALIGNMENT_TEMPLATE = "|-|-|-|-|-|";
     const string TABLE_CONTENT_TEMPLATE = "|{0}|{1}|{2}|{3}|{4}|";
     const string ANCHOR_TEMPLATE = "[{0}]({1})";//[link](http://redditpreview.com)
+    const string COMMENT_TEMPLATE = "{0}  \n\n{1}";
 
 
     public static async Task MakeInitiativePost(Reddit reddit, string postTitle, List<Initiative> initiatives)
@@ -91,23 +93,23 @@ public partial class Program
             init.Deconstruct(out int id, out DateTimeOffset filed, out string fallback, out int assignedNumber, out string sponsor, out string subject, out ContactInfo contactInfo, out string? ballotTitle, out string? ballotSummary, out Uri? ballotTitleLetter, out Uri? completeText, out string? fullText);
 
             var ballotTitleCell = string.Empty;
-            if(ballotTitleLetter!= null)
+            if (ballotTitleLetter != null)
             {
                 ballotTitleCell = string.Format(ANCHOR_TEMPLATE, "Ballot Title Letter", ballotTitleLetter.ToString());
             }
 
             var ballotSummaryCell = string.Empty;
-            if(completeText != null)
+            if (completeText != null)
             {
                 ballotSummaryCell = string.Format(ANCHOR_TEMPLATE, "View Complete Text", completeText.ToString());
             }
 
-            if(ballotTitleLetter == null && completeText == null)
+            if (ballotTitleLetter == null && completeText == null)
             {
-                ballotSummaryCell= "initiative submitted as text no docs provided";
+                ballotSummaryCell = "initiative submitted as text no docs provided";
             }
 
-            if(sponsor == "Tim Eyman")
+            if (sponsor == "Tim Eyman")
             {
                 var link = RandomTeLink();
                 sponsor = string.Format(ANCHOR_TEMPLATE, sponsor, link.ToString());
@@ -123,13 +125,44 @@ public partial class Program
             table.AppendLine(row);
         }
 
-        var p = (await reddit.GetSubredditAsync("seattle")).SubmitTextPostAsync(postTitle, table.ToString());
-        var p2 = await p;
+        //bot
+
+        await MakeSeattleWeeklyThreadComment(reddit, postTitle, table);
+        await MakeWashingtonPost(reddit, postTitle, table);
     }
 
+    private static async Task MakeWashingtonPost(Reddit reddit, string postTitle, StringBuilder table)
+    {
+        try
+        {
+            //Seattle
+            var weeklyPosts = reddit.Search<Post>("subreddit:seattle flair:\"Weekly+Thread\"", Sorting.New, TimeSorting.Day, 10);
+            var post = await weeklyPosts.FirstOrDefaultAsync(x => x.IsSelfPost && x.AuthorName == "AutoModerator");
+            if (post != null)
+            {
+                await post.CommentAsync(string.Format(COMMENT_TEMPLATE, postTitle, table.ToString()));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception in Seattle Weekly Thread");
+            Console.WriteLine(ex);
+        }
+    }
 
-
-
+    private static async Task MakeSeattleWeeklyThreadComment(Reddit reddit, string postTitle, StringBuilder table)
+    {
+        //Washington
+        try
+        {
+            var p = await (await reddit.GetSubredditAsync("washington")).SubmitTextPostAsync(postTitle, table.ToString());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Exception in Washington");
+            Console.WriteLine(ex);
+        }
+    }
 
     public static Uri RandomTeLink()
     {
