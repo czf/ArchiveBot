@@ -3,9 +3,7 @@
 
 name: .NET
 
-on:
-  schedule:
-    - cron: '27 7 * * 1'
+on: workflow_dispatch
 
 jobs:
   build:
