@@ -4,6 +4,7 @@
 name: .NET
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '27 7 * * 1'
 
