@@ -52,8 +52,8 @@ using IHost host = Host.CreateDefaultBuilder(args)
     }).Build();
 
 var initiativeClient = host.Services.GetRequiredService<IInitiativeClient>();
-var initiatives1 = await GetRecentInitiativesToThePeople(DateTimeOffset.UtcNow.AddDays(-23), initiativeClient);
-Console.WriteLine(initiatives1);
+
+
 
 var reddit = host.Services.GetRequiredService<Reddit>();
 
