@@ -55,20 +55,7 @@ var initiativeClient = host.Services.GetRequiredService<IInitiativeClient>();
 var reddit = host.Services.GetRequiredService<Reddit>();
 
 var lastPostDate = await GetLastDate(reddit);
-var initiatives = await GetRecentInitiativesToThePeople(lastPostDate, initiativeClient);
-var postTitle = GeneratePostTitleForThePeople(initiatives, lastPostDate);
-
-if(postTitle != null)
-{
-    await MakeInitiativePost(reddit, postTitle, initiatives);
-}
-initiatives = await GetRecentInitiativesToTheLegislature(lastPostDate, initiativeClient);
-postTitle = GeneratePostTitleForTheLegislature(initiatives, lastPostDate);
-
-if(postTitle != null)
-{
-    await MakeInitiativePost(reddit, postTitle, initiatives);
-}
+Console.WriteLine(lastPostDate);
 
 public partial class Program
 {
