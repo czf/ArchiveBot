@@ -38,13 +38,14 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 
 
-            BotWebAgent? agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0001/");
+            
             Reddit r = null;
             int count = 0;
             do
             {
                 try
                 {
+                    BotWebAgent? agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0001/");
                     r = new Reddit(agent, true);
                 }
                 catch (Exception ex)
