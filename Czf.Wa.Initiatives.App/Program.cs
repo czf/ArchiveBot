@@ -39,7 +39,22 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 
             BotWebAgent? agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0001/");
-            Reddit r = new Reddit(agent, true);
+            Reddit r = null;
+            int count = 0;
+            do
+            {
+                try
+                {
+                    r = new Reddit(agent, true);
+                }
+                catch (Exception ex)
+                {
+                    count++;
+                    Console.WriteLine("failed");
+                    Console.WriteLine(ex);
+                }
+            }
+            while (r==null && count<10);
 
 
 
