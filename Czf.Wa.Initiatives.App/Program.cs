@@ -31,7 +31,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
             string pass = hostContext.Configuration["pass"] ?? string.Empty;
             string clientId = hostContext.Configuration["clientId"] ?? string.Empty;
             string secret = hostContext.Configuration["secret"] ?? string.Empty;
-            if (user == string.Empty || pass == string.Empty || clientId == string.Empty || secret == string.Empty)
+            if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass)|| string.IsNullOrEmpty(clientId)|| string.IsNullOrEmpty(secret))
             {
                 throw new ArgumentException("missing one or more environment variables");
             }
