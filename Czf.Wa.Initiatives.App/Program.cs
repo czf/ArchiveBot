@@ -22,6 +22,10 @@ using IHost host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((hostContext, services) =>
     {
         services.AddHttpClient<IInitiativeClient>();
+        services.AddHttpClient("botwebagent", x =>
+        {
+            x.Timeout = TimeSpan.FromMinutes(5);            
+        });
         services
         .AddSingleton<IInitiativeClient,InitiativeClient>()
         .AddSingleton<Reddit>((provider) =>
@@ -37,15 +41,18 @@ using IHost host = Host.CreateDefaultBuilder(args)
             }
 
 
-
+            var c = provider.GetRequiredService<IHttpClientFactory>().CreateClient("botwebagent");
             
-            Reddit r = null;
+
+
+            Reddit? r = null;
             int count = 0;
             do
             {
                 try
                 {
-                    BotWebAgent? agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0001/");
+
+                    BotWebAgent? agent = new BotWebAgent(user, pass, clientId, secret, "https://www.reddit.com/user/somekindofbot0001/", c);
                     r = new Reddit(agent, true);
                 }
                 catch (Exception ex)

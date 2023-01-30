@@ -9,10 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="czf.RedditSharp" Version="3.0.0" />
     <PackageReference Include="Czf.Wa.Initiatives" Version="0.1.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="7.0.0" />
-    <PackageReference Include="RedditSharp" Version="2.0.0" />
   </ItemGroup>
 
 </Project>
