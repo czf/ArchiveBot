@@ -21,10 +21,10 @@ jobs:
         dotnet-version: 7.0.x
     - name: Restore dependencies
       working-directory: ./Czf.Wa.Initiatives.App
-      run: dotnet restore
+      run: dotnet restore -c release
     - name: Build
       working-directory: ./Czf.Wa.Initiatives.App
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore -c release
     - name: Run
       env:
         user: ${{secrets.user}}
@@ -32,6 +32,6 @@ jobs:
         clientId: ${{secrets.clientId}}
         secret: ${{secrets.secret}}
       working-directory: ./Czf.Wa.Initiatives.App
-      run: dotnet run --no-build --verbosity normal
+      run: dotnet run --no-build --verbosity normal -c release
     
 
