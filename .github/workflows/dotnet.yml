@@ -21,7 +21,7 @@ jobs:
         dotnet-version: 7.0.x
     - name: Restore dependencies
       working-directory: ./Czf.Wa.Initiatives.App
-      run: dotnet restore -c release
+      run: dotnet restore 
     - name: Build
       working-directory: ./Czf.Wa.Initiatives.App
       run: dotnet build --no-restore -c release
