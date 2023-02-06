@@ -38,7 +38,7 @@ namespace ArchiveBot.Core
         private bool _checkTableExists = true;
         private const string SUPPORT_LINKS = 
             @"^^You ^^can ^^support ^^Archive.org ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/94-3242767)  
-            ^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/91-1140642)";
+            ^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/91-1140642)  ";
 
         private static bool? _debug;
         public static bool Debug
