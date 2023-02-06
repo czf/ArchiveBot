@@ -128,10 +128,10 @@ public partial class Program
         //bot
 
         await MakeSeattleWeeklyThreadComment(reddit, postTitle, table);
-        await MakeWashingtonPost(reddit, postTitle, table);
+        //await MakeWashingtonPost(reddit, postTitle, table);
     }
 
-    private static async Task MakeWashingtonPost(Reddit reddit, string postTitle, StringBuilder table)
+    private static async Task MakeSeattleWeeklyThreadComment(Reddit reddit, string postTitle, StringBuilder table)
     {
         try
         {
@@ -150,7 +150,7 @@ public partial class Program
         }
     }
 
-    private static async Task MakeSeattleWeeklyThreadComment(Reddit reddit, string postTitle, StringBuilder table)
+    private static async Task MakeWashingtonPost(Reddit reddit, string postTitle, StringBuilder table)
     {
         //Washington
         try
@@ -195,12 +195,12 @@ public partial class Program
     {
         
         DateTimeOffset created = new DateTimeOffset(DateTimeOffset.Now.Year, 1, 1, 0, 0, 0, TimeSpan.FromHours(-8));
-        var post = await reddit.User.GetPosts(RedditSharp.Things.Sort.New, 1, RedditSharp.Things.FromTime.All).FirstOrDefaultAsync();
+        var post = await reddit.User.GetComments(RedditSharp.Things.Sort.New, 1, RedditSharp.Things.FromTime.All).FirstOrDefaultAsync();
         if(post != null)
         {
-            var pacificStandarTime = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
+            var pacificStandardTime = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
             created = new DateTimeOffset(post.CreatedUTC, TimeSpan.Zero);
-            created = TimeZoneInfo.ConvertTimeFromUtc(created.DateTime, pacificStandarTime);
+            created = TimeZoneInfo.ConvertTimeFromUtc(created.DateTime, pacificStandardTime);
         }
         return created;
     }
