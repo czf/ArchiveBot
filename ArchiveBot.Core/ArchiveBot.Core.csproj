@@ -10,7 +10,7 @@
 	  <PackageReference Include="Azure.Data.Tables" Version="12.7.1" />
 	  <PackageReference Include="Azure.Storage.Blobs" Version="12.14.1" />
 	  <PackageReference Include="Czf.Api.NewsBankWrapper" Version="1.0.3" />
-	  <PackageReference Include="czf.apiwrappers.waybackmachine" Version="2.1.0" />
+	  <PackageReference Include="czf.apiwrappers.waybackmachine" Version="2.1.2" />
 	  <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
 	  <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.5" />
 	  <PackageReference Include="Microsoft.Azure.Management.Storage" Version="25.0.0" />
