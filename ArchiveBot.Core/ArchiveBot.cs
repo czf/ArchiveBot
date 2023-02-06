@@ -36,7 +36,9 @@ namespace ArchiveBot.Core
         private readonly EditForNewsbank _editForNewsbank;
         private readonly CheckBotMail _checkBotMail;
         private bool _checkTableExists = true;
-
+        private const string SUPPORT_LINKS = 
+            @"^^You ^^can ^^support ^^Archive.org ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/94-3242767)  
+            ^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/91-1140642)";
 
         private static bool? _debug;
         public static bool Debug
@@ -305,13 +307,12 @@ namespace ArchiveBot.Core
                             }
 
                             string msg =
-                $@"[Archive.org version.]({archivedUrl.ToString()})
+                $@"[Archive.org version.]({archivedUrl})
 
 :0:
 
 ----
-^^You ^^can ^^support ^^Archive.org ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/94-3242767)  
-^^You ^^can ^^support ^^Seattle ^^Public ^^Library ^^via [^^(Amazon) ^^(Smile)](https://smile.amazon.com/ch/91-1140642)  
+{(DateTime.UtcNow < new DateTime(2023, 2,20) ? SUPPORT_LINKS : string.Empty)}
 ^^I'm ^^a ^^bot, ^^beep ^^boop [ ^^((fork) ^^(me) ^^(on) ^^(github))](https://github.com/czf/ArchiveBot)";
 
                             _log.LogInformation(msg);
