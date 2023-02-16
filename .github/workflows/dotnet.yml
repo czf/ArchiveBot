@@ -25,13 +25,4 @@ jobs:
     - name: Build
       working-directory: ./Czf.Wa.Initiatives.App
       run: dotnet build --no-restore
-    - name: Run
-      env:
-        user: ${{secrets.user}}
-        pass: ${{secrets.pass}}
-        clientId: ${{secrets.clientId}}
-        secret: ${{secrets.secret}}
-      working-directory: ./Czf.Wa.Initiatives.App
-      run: dotnet run --no-build --verbosity normal
     
-
