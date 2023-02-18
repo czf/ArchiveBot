@@ -85,7 +85,6 @@ else
 {
     throw new Exception("doesn't match");
 }
-return;
 
 var initiativeClient = host.Services.GetRequiredService<IInitiativeClient>();
 
