@@ -15,7 +15,7 @@ using System.Text;
 Console.WriteLine("Hello, World!");
 using IHost host = Host.CreateDefaultBuilder(args)
     
-    .ConfigureAppConfiguration(x => { 
+    .ConfigureAppConfiguration(x => {
         x.AddUserSecrets<Program>();
         x.AddEnvironmentVariables();
     })
@@ -31,7 +31,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
         .AddSingleton<Reddit>((provider) =>
         {
             
-            string user = hostContext.Configuration["user"] ?? string.Empty;
+            string user = hostContext.Configuration["reddituser"] ?? string.Empty;
             string pass = hostContext.Configuration["pass"] ?? string.Empty;
             string clientId = hostContext.Configuration["clientId"] ?? string.Empty;
             string secret = hostContext.Configuration["secret"] ?? string.Empty;
@@ -76,16 +76,8 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 
 var config = host.Services.GetRequiredService<IConfiguration>();
-Console.WriteLine(config["testsecret"]);
-if (config["testsecret"]?.ToString() == "test secr.et")
-{
-    Console.WriteLine("matches");
-}
-else
-{
-    throw new Exception("doesn't match");
-}
 
+return;
 var initiativeClient = host.Services.GetRequiredService<IInitiativeClient>();
 
 
