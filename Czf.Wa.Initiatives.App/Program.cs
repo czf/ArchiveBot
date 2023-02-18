@@ -78,14 +78,16 @@ using IHost host = Host.CreateDefaultBuilder(args)
 var config = host.Services.GetRequiredService<IConfiguration>();
 
 
-var initiativeClient = host.Services.GetRequiredService<IInitiativeClient>();
-
-
 
 var reddit = host.Services.GetRequiredService<Reddit>();
 
-var lastPostDate = await GetLastDate(reddit);
-Console.WriteLine(lastPostDate);
+bool hasMail = await reddit.User.GetUnreadMessages().AnyAsync();
+
+if (hasMail)
+{
+    throw new Exception("Has mail");
+}
+
 
 public partial class Program
 {
