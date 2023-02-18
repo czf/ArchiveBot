@@ -31,6 +31,7 @@ jobs:
         pass: ${{secrets.pass}}
         clientId: ${{secrets.clientId}}
         secret: ${{secrets.secret}}
+        testsecret: ${{secrets.testsecret}}
       working-directory: ./Czf.Wa.Initiatives.App
       run: dotnet run --no-build --verbosity normal -c release
     
