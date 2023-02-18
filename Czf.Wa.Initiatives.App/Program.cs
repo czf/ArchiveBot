@@ -74,6 +74,19 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
     }).Build();
 
+
+var config = host.Services.GetRequiredService<IConfiguration>();
+Console.WriteLine(config["testsecret"]);
+if (config["testsecret"]?.ToString() == "testsecret")
+{
+    Console.WriteLine("matches");
+}
+else
+{
+    throw new Exception("doesn't match");
+}
+return;
+
 var initiativeClient = host.Services.GetRequiredService<IInitiativeClient>();
 
 
