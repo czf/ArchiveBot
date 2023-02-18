@@ -11,7 +11,7 @@ on:
 jobs:
   WaInitiatives_Run:
     name: Run WaInitiatives App
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: WaInitiatives
     steps:
     - uses: actions/checkout@v3
