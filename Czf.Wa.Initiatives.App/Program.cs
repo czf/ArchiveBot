@@ -77,7 +77,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 var config = host.Services.GetRequiredService<IConfiguration>();
 Console.WriteLine(config["testsecret"]);
-if (config["testsecret"]?.ToString() == "testsecret")
+if (config["testsecret"]?.ToString() == "test secr.et")
 {
     Console.WriteLine("matches");
 }
