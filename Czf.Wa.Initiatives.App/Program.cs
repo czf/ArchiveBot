@@ -77,7 +77,7 @@ using IHost host = Host.CreateDefaultBuilder(args)
 
 var config = host.Services.GetRequiredService<IConfiguration>();
 
-return;
+
 var initiativeClient = host.Services.GetRequiredService<IInitiativeClient>();
 
 

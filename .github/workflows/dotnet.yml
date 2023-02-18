@@ -23,7 +23,7 @@ jobs:
       run: dotnet build --no-restore -c release
     - name: Run
       env:
-        user: ${{secrets.user}}
+        reddituser: ${{secrets.reddituser}}
         pass: ${{secrets.pass}}
         clientId: ${{secrets.clientId}}
         secret: ${{secrets.secret}}
