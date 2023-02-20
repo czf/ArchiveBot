@@ -5,8 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RedditSharp;
 using RedditSharp.Things;
-using System.Net;
-using System.Security.Authentication;
 using System.Text;
 
 
@@ -60,14 +58,14 @@ var postTitle = GeneratePostTitleForThePeople(initiatives, lastPostDate);
 
 if(postTitle != null)
 {
-    await MakeInitiativePost(reddit, postTitle, initiatives);
+    MakeInitiativePost(reddit, postTitle, initiatives);
 }
 initiatives = await GetRecentInitiativesToTheLegislature(lastPostDate, initiativeClient);
 postTitle = GeneratePostTitleForTheLegislature(initiatives, lastPostDate);
 
 if(postTitle != null)
 {
-    await MakeInitiativePost(reddit, postTitle, initiatives);
+    MakeInitiativePost(reddit, postTitle, initiatives);
 }
 
 public partial class Program
@@ -82,7 +80,7 @@ public partial class Program
     const string COMMENT_TEMPLATE = "{0}  \n\n{1}";
 
 
-    public static async Task MakeInitiativePost(Reddit reddit, string postTitle, List<Initiative> initiatives)
+    public static void MakeInitiativePost(Reddit reddit, string postTitle, List<Initiative> initiatives)
     {
         StringBuilder table = new StringBuilder();
         table.AppendLine(TABLE_HEADER_TEMPLATE);
@@ -125,43 +123,7 @@ public partial class Program
             table.AppendLine(row);
         }
 
-        //bot
-
-        await MakeSeattleWeeklyThreadComment(reddit, postTitle, table);
-        //await MakeWashingtonPost(reddit, postTitle, table);
-    }
-
-    private static async Task MakeSeattleWeeklyThreadComment(Reddit reddit, string postTitle, StringBuilder table)
-    {
-        try
-        {
-            //Seattle
-            var weeklyPosts = reddit.Search<Post>("subreddit:seattle flair:\"Weekly+Thread\"", Sorting.New, TimeSorting.Day, 10);
-            var post = await weeklyPosts.FirstOrDefaultAsync(x => x.IsSelfPost && x.AuthorName == "AutoModerator");
-            if (post != null)
-            {
-                await post.CommentAsync(string.Format(COMMENT_TEMPLATE, postTitle, table.ToString()));
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Exception in Seattle Weekly Thread");
-            Console.WriteLine(ex);
-        }
-    }
-
-    private static async Task MakeWashingtonPost(Reddit reddit, string postTitle, StringBuilder table)
-    {
-        //Washington
-        try
-        {
-            var p = await (await reddit.GetSubredditAsync("washington")).SubmitTextPostAsync(postTitle, table.ToString());
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Exception in Washington");
-            Console.WriteLine(ex);
-        }
+        Console.WriteLine("Currently no destinations for this post");
     }
 
     public static Uri RandomTeLink()
