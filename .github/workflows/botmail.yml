@@ -16,10 +16,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Restore dependencies
-      working-directory: ./Czf.Reddit.BotCheckMail.App
+      working-directory: ./Czf.Reddit.Bot.CheckMail.App
       run: dotnet restore 
     - name: Build
-      working-directory: ./Czf.Reddit.BotCheckMail.App
+      working-directory: ./Czf.Reddit.Bot.CheckMail.App
       run: dotnet build --no-restore -c release
     - name: Run
       env:
@@ -32,6 +32,6 @@ jobs:
         bots:1:clientId: ${{secrets.clientId0}}
         bots:1:secret: ${{secrets.secret0}}
         
-      working-directory: ./Czf.Reddit.BotCheckMail.App
+      working-directory: ./Czf.Reddit.Bot.CheckMail.App
       run: dotnet run --no-build --verbosity normal -c release
     
