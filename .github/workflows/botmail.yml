@@ -1,0 +1,37 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: Check Bot Mail
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '9 */4 * * *'
+
+jobs:
+  CheckBotMail_Run:
+    name: Run Czf.Reddit.BotCheckMail.App
+    runs-on: ubuntu-latest
+    environment: RedditBotMail
+    steps:
+    - uses: actions/checkout@v3
+    - name: Restore dependencies
+      working-directory: ./Czf.Reddit.BotCheckMail.App
+      run: dotnet restore 
+    - name: Build
+      working-directory: ./Czf.Reddit.BotCheckMail.App
+      run: dotnet build --no-restore -c release
+    - name: Run
+      env:
+        bots:0:reddituser: ${{secrets.reddituser0}}
+        bots:0:pass: ${{secrets.pass0}}
+        bots:0:clientId: ${{secrets.clientId0}}
+        bots:0:secret: ${{secrets.secret0}}
+        bots:1:reddituser: ${{secrets.reddituser0}}
+        bots:1:pass: ${{secrets.pass0}}
+        bots:1:clientId: ${{secrets.clientId0}}
+        bots:1:secret: ${{secrets.secret0}}
+        
+      working-directory: ./Czf.Reddit.BotCheckMail.App
+      run: dotnet run --no-build --verbosity normal -c release
+    
