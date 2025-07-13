@@ -6,7 +6,7 @@ name: Check Bot Mail
 on:
   workflow_dispatch:
   schedule:
-    - cron: '9 */4 * * *'
+    - cron: '9 16 * * *'
 
 jobs:
   CheckBotMail_Run:
