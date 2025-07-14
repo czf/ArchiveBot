@@ -17,8 +17,11 @@ using IHost host = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices((hostContext, services) =>
     {
-        
-        services.AddHttpClient();
+
+        services.AddHttpClient("custom").ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            return new handler();
+         }); 
 
         List<Bot> bots = new();
         hostContext.Configuration.Bind("bots", bots);
@@ -41,8 +44,8 @@ using IHost host = Host.CreateDefaultBuilder(args)
                 }
 
 
-                var c = provider.GetRequiredService<IHttpClientFactory>().CreateClient();
-
+                var c = provider.GetRequiredService<IHttpClientFactory>().CreateClient("custom");
+                
 
                 Reddit? r = null;
                 int count = 0;
@@ -96,4 +99,31 @@ public class Bot
     public string Pass { get; set; } = string.Empty;
     public string ClientId { get; set; } = string.Empty;
     public string Secret { get; set; } = string.Empty;
+}
+
+
+public class handler : HttpClientHandler
+{
+    HttpMessageHandler httpMessageHandler;
+
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if(request.RequestUri == new Uri("https://ssl.reddit.com/api/v1/access_token"))
+        {
+            request.RequestUri = new Uri("https://api.reddit.com/api/v1/access_token");
+            return await base.SendAsync(request, cancellationToken);
+        }
+        return await base.SendAsync(request, cancellationToken);
+    }
+
+    protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.RequestUri == new Uri("https://ssl.reddit.com/api/v1/access_token"))
+        {
+            request.RequestUri = new Uri("https://api.reddit.com/api/v1/access_token");
+            return base.Send(request, cancellationToken);
+        }
+        return base.Send(request, cancellationToken);
+    }
+
 }
